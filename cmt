@@ -235,7 +235,7 @@ _pick() {
   _old=$(stty -g <&9 2>/dev/null) || { exec 9>&-; _pick_fallback "$_var" "$_prompt" "${_items[@]}"; return; }
   stty -echo -icanon min 1 time 0 <&9 2>/dev/null || { exec 9>&-; _pick_fallback "$_var" "$_prompt" "${_items[@]}"; return; }
 
-  trap "stty '$_old' <&9 2>/dev/null; printf '\033[?25h' >&9 2>/dev/null; exec 9>&-" EXIT INT TERM
+  trap "trap - EXIT INT TERM; stty '$_old' <&9 2>/dev/null; printf '\033[?25h' >&9 2>/dev/null; exec 9>&- 2>/dev/null" EXIT INT TERM
 
   _pick_move_up() {
     _cur=$(( (_cur - 1 + _n) % _n ))

@@ -21,6 +21,17 @@
               "after": "\""
             }
           ]
+        },
+        {
+          "type": "generic",
+          "path": "README.md",
+          "searchBy": "string",
+          "data": [
+            {
+              "before": "\"version\": \"",
+              "after": "\","
+            }
+          ]
         }
       ]
     }

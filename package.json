@@ -1,0 +1,33 @@
+{
+  "name": "@mihairo/cmt",
+  "version": "1.0.0",
+  "description": "Zero-dependency conventional commits CLI — interactive picker, linter, and git hook installer. One bash script, works in any repo.",
+  "keywords": [
+    "conventional-commits",
+    "commit",
+    "git",
+    "lint",
+    "cli",
+    "hook",
+    "commitlint",
+    "husky"
+  ],
+  "homepage": "https://github.com/mihai-ro/cmt",
+  "bugs": {
+    "url": "https://github.com/mihai-ro/cmt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mihai-ro/cmt.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "cmt": "./cmt"
+  },
+  "files": [
+    "cmt",
+    "schema/cmt.schema.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

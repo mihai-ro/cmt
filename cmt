@@ -1,0 +1,972 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  cmt — Conventional Commits CLI
+#  Zero-dependency. Pure bash. Works wherever git works.
+#  https://www.conventionalcommits.org/en/v1.0.0/
+# =============================================================================
+set -euo pipefail
+
+CC_VERSION="1.0.0"
+CC_CONFIG_FILE=".cmt.json"
+CC_SCHEMA_URL="https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json"
+
+# colours
+if [[ -z "${NO_COLOR:-}" ]] && ([[ -t 1 ]] || [[ -c /dev/tty ]]); then
+  RESET=$'\033[0m'
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  ITALIC=$'\033[3m'
+  ACCENT=$'\033[38;2;86;182;194m'       # cyan    #56b6c2
+  ACCENT_BG=$'\033[48;2;86;182;194m'
+  ACCENT_BOLD=$'\033[1;38;2;86;182;194m'
+  GREEN=$'\033[38;2;152;195;121m'       # green   #98c379 — success
+  YELLOW=$'\033[38;2;229;192;123m'      # yellow  #e5c07b — warning / patch
+  RED=$'\033[38;2;224;108;117m'         # red     #e06c75 — error / breaking
+  BLUE=$'\033[38;2;97;175;239m'         # blue    #61afef — info
+  MUTED=$'\033[38;2;92;99;112m'         # comment #5c6370 — secondary text
+  CYAN="$ACCENT"
+else
+  RESET=''; BOLD=''; DIM=''; ITALIC=''
+  ACCENT=''; ACCENT_BG=''; ACCENT_BOLD=''
+  GREEN=''; YELLOW=''; RED=''; BLUE=''; MUTED=''
+  CYAN=''
+fi
+
+# helpers
+info()    { printf "  ${BLUE}·${RESET} %s\n" "$*"; }
+success() { printf "  ${GREEN}✔${RESET} %s\n" "$*"; }
+warn()    { printf "  ${YELLOW}⚑${RESET}  ${YELLOW}%s${RESET}\n" "$*" >&2; }
+error()   { printf "  ${RED}✖${RESET}  %s\n" "$*" >&2; }
+bold()    { printf "${BOLD}%s${RESET}" "$*"; }
+die()     { error "$*"; exit 1; }
+
+# Conventional Commits spec types
+# format: "type|emoji|semver_impact|description"
+BUILTIN_TYPES=(
+  "feat|✨|minor|A new feature"
+  "fix|🐛|patch|A bug fix"
+  "docs|📚|none|Documentation only changes"
+  "style|💅|none|Formatting, missing semi-colons, etc — no logic change"
+  "refactor|♻️ |none|Code change that neither fixes a bug nor adds a feature"
+  "perf|⚡|patch|A code change that improves performance"
+  "test|🧪|none|Adding or correcting tests"
+  "build|🏗️ |none|Changes to build system or external dependencies"
+  "ci|🔧|none|Changes to CI/CD configuration files and scripts"
+  "chore|🔩|none|Other changes that don't modify src or test files"
+  "revert|⏪|patch|Reverts a previous commit"
+)
+
+# config loader
+load_config() {
+  local cfg="${CC_CONFIG_FILE}"
+
+  TYPES=("${BUILTIN_TYPES[@]}")
+  CUSTOM_SCOPES=()
+
+  # rule defaults (overridden by .cmt.json "rules" block)
+  RULE_MAX_HEADER=72
+  RULE_REQUIRE_SCOPE=0
+  RULE_DISALLOW_UPPER=0
+  RULE_DISALLOW_PERIOD=0
+  RULE_ALLOW_BREAKING=("feat" "fix")
+
+  [[ -f "$cfg" ]] || return 0
+
+  # Anchored key patterns in variables — [[ =~ var ]] treats the value as ERE.
+  # Must be unquoted on the RHS of =~ to get regex behaviour (not literal match).
+  local _p_ct='^[[:space:]]+"customTypes"[[:space:]]*:'
+  local _p_sc='^[[:space:]]+"scopes"[[:space:]]*:'
+  local _p_ab='^[[:space:]]+"allowBreakingChanges"[[:space:]]*:'
+  local _p_ru='^[[:space:]]+"rules"[[:space:]]*:'
+  local _p_kv='"([^"]+)"[[:space:]]*:[[:space:]]*"([^"]+)"'
+
+  # single-pass state machine
+  local section=""        # current top-level context
+  local in_obj=0          # inside a customTypes item object
+  local collecting_arr="" # key name of a multi-line array being collected
+  local array_buf=""      # accumulated multi-line array content
+
+  local type_val="" emoji_val="⚙️ " semver_val="none" desc_val="Custom type"
+
+  while IFS= read -r line; do
+
+    # ── top-level section detection — anchored regex, zero subprocesses ───
+    if [[ "$line" =~ $_p_ct ]]; then
+      # handle empty inline: "customTypes": []
+      [[ "$line" == *"[]"* ]] && continue
+      section="customTypes"; continue
+    fi
+
+    if [[ "$line" =~ $_p_sc ]]; then
+      if [[ "$line" =~ \[.*\] ]]; then
+        # fully inline: "scopes": ["auth","api"]
+        local _s="${line#*[}"; _s="${_s%%]*}"
+        while [[ "$_s" =~ '"([^"]+)"' ]]; do
+          CUSTOM_SCOPES+=("${BASH_REMATCH[1]}")
+          _s="${_s#*"${BASH_REMATCH[0]}"}"
+        done
+      elif [[ "$line" == *"["* ]]; then
+        collecting_arr="scopes"; array_buf=""
+      fi
+      section=""; continue
+    fi
+
+    if [[ "$line" =~ $_p_ab ]]; then
+      if [[ "$line" =~ \[.*\] ]]; then
+        local _s="${line#*[}"; _s="${_s%%]*}"
+        RULE_ALLOW_BREAKING=()
+        while [[ "$_s" =~ '"([^"]+)"' ]]; do
+          RULE_ALLOW_BREAKING+=("${BASH_REMATCH[1]}")
+          _s="${_s#*"${BASH_REMATCH[0]}"}"
+        done
+        [[ ${#RULE_ALLOW_BREAKING[@]} -eq 0 ]] && RULE_ALLOW_BREAKING=("feat" "fix")
+      elif [[ "$line" == *"["* ]]; then
+        collecting_arr="allowBreakingChanges"; array_buf=""
+        RULE_ALLOW_BREAKING=()
+      fi
+      continue
+    fi
+
+    if [[ "$line" =~ $_p_ru ]]; then
+      section="rules"; continue
+    fi
+
+    # ── multi-line array collector ─────────────────────────────────────────
+    if [[ -n "$collecting_arr" ]]; then
+      if [[ "$line" == *"]"* ]]; then
+        # closing bracket — flush accumulated buffer
+        array_buf+="${line%%]*}"
+        local _s="$array_buf"
+        case "$collecting_arr" in
+          scopes)
+            while [[ "$_s" =~ '"([^"]+)"' ]]; do
+              CUSTOM_SCOPES+=("${BASH_REMATCH[1]}")
+              _s="${_s#*"${BASH_REMATCH[0]}"}"
+            done
+            ;;
+          allowBreakingChanges)
+            while [[ "$_s" =~ '"([^"]+)"' ]]; do
+              RULE_ALLOW_BREAKING+=("${BASH_REMATCH[1]}")
+              _s="${_s#*"${BASH_REMATCH[0]}"}"
+            done
+            [[ ${#RULE_ALLOW_BREAKING[@]} -eq 0 ]] && RULE_ALLOW_BREAKING=("feat" "fix")
+            ;;
+        esac
+        collecting_arr=""; array_buf=""
+      else
+        array_buf+="$line"
+      fi
+      continue
+    fi
+
+    # ── customTypes object items ───────────────────────────────────────────
+    if [[ "$section" == "customTypes" ]]; then
+      if [[ "$line" =~ ^[[:space:]]*\] ]]; then
+        section=""; in_obj=0; continue
+      fi
+      # inline object: { "type": "wip", "emoji": "🚧", ... } on one line
+      if [[ "$line" =~ ^[[:space:]]*\{.*\} ]]; then
+        local _it="" _ie="⚙️ " _is="none" _id="Custom type" _tmp="$line"
+        while [[ "$_tmp" =~ $_p_kv ]]; do
+          case "${BASH_REMATCH[1]}" in
+            type)        _it="${BASH_REMATCH[2]}" ;;
+            emoji)       _ie="${BASH_REMATCH[2]}" ;;
+            semver)      _is="${BASH_REMATCH[2]}" ;;
+            description) _id="${BASH_REMATCH[2]}" ;;
+          esac
+          _tmp="${_tmp#*"${BASH_REMATCH[0]}"}"
+        done
+        [[ -n "$_it" ]] && TYPES+=("${_it}|${_ie}|${_is}|${_id}")
+        continue
+      fi
+      # multi-line object: { opens on its own line
+      if [[ "$line" =~ ^[[:space:]]*\{ ]]; then
+        in_obj=1
+        type_val=""; emoji_val="⚙️ "; semver_val="none"; desc_val="Custom type"
+        continue
+      fi
+      if [[ $in_obj -eq 1 ]]; then
+        if [[ "$line" =~ ^[[:space:]]*\} ]]; then
+          [[ -n "$type_val" ]] && TYPES+=("${type_val}|${emoji_val}|${semver_val}|${desc_val}")
+          in_obj=0; continue
+        fi
+        if [[ "$line" =~ $_p_kv ]]; then
+          case "${BASH_REMATCH[1]}" in
+            type)        type_val="${BASH_REMATCH[2]}" ;;
+            emoji)       emoji_val="${BASH_REMATCH[2]}" ;;
+            semver)      semver_val="${BASH_REMATCH[2]}" ;;
+            description) desc_val="${BASH_REMATCH[2]}" ;;
+          esac
+        fi
+      fi
+    fi
+
+    # ── rules scalar fields ────────────────────────────────────────────────
+    if [[ "$section" == "rules" ]]; then
+      if [[ "$line" =~ ^[[:space:]]*\} ]]; then
+        section=""; continue
+      fi
+      # match: "key": true|false|number — no subprocess needed
+      if [[ "$line" =~ '"([^"]+)"'[[:space:]]*:[[:space:]]*(true|false|[0-9]+) ]]; then
+        case "${BASH_REMATCH[1]}" in
+          maxHeaderLength)              RULE_MAX_HEADER="${BASH_REMATCH[2]}" ;;
+          requireScope)                 [[ "${BASH_REMATCH[2]}" == "true" ]] && RULE_REQUIRE_SCOPE=1 ;;
+          disallowUpperCaseDescription) [[ "${BASH_REMATCH[2]}" == "true" ]] && RULE_DISALLOW_UPPER=1 ;;
+          disallowTrailingPeriod)       [[ "${BASH_REMATCH[2]}" == "true" ]] && RULE_DISALLOW_PERIOD=1 ;;
+        esac
+      fi
+    fi
+
+  done < "$cfg"
+}
+
+# type selection UI
+# arrow-key picker
+# Usage: _pick <result_var> <prompt> <item1> <item2> ...
+# Ssts result_var to chosen index (0-based). Renders on /dev/tty.
+_pick() {
+  local _var="$1" _prompt="$2"; shift 2
+  local -a _items=("$@")
+  local _n=${#_items[@]} _cur=0 _top=0 _view=7 _k1 _k2 _k3
+
+  exec 9<>/dev/tty
+
+  local _old
+  _old=$(stty -g <&9 2>/dev/null) || { exec 9>&-; _pick_fallback "$_var" "$_prompt" "${_items[@]}"; return; }
+  stty -echo -icanon min 1 time 0 <&9 2>/dev/null || { exec 9>&-; _pick_fallback "$_var" "$_prompt" "${_items[@]}"; return; }
+
+  trap "stty '$_old' <&9 2>/dev/null; printf '\033[?25h' >&9 2>/dev/null; exec 9>&-" EXIT INT TERM
+
+  _pick_move_up() {
+    _cur=$(( (_cur - 1 + _n) % _n ))
+    if [[ $_cur -eq $(( _n - 1 )) ]]; then
+      # wrapped from first to last — show last page
+      _top=$(( _n - _view ))
+      [[ $_top -lt 0 ]] && _top=0 || true
+    elif [[ $_cur -lt $_top ]]; then
+      _top=$(( _cur ))
+    fi
+  }
+
+  _pick_move_down() {
+    _cur=$(( (_cur + 1) % _n ))
+    if [[ $_cur -ge $(( _top + _view )) ]]; then
+      _top=$(( _cur - _view + 1 ))
+    elif [[ $_cur -eq 0 ]]; then
+      # wrapped from bottom to top
+      _top=0
+    fi
+  }
+
+  # draw the visible window of _view items starting at _top
+  _draw() {
+    local _i _end
+    _end=$(( _top + _view ))
+    [[ $_end -gt $_n ]] && _end=$_n
+    local _visible=$(( _end - _top ))
+
+    # scroll hint above
+    if [[ $_top -gt 0 ]]; then
+      printf "  ${MUTED}↑ %d more${RESET}\033[K\n" "$_top" >&9
+    else
+      printf "\033[K\n" >&9
+    fi
+
+    for (( _i=_top; _i<_end; _i++ )); do
+      if (( _i == _cur )); then
+        printf "  ${ACCENT_BOLD}❯${RESET} %s${RESET}\033[K\n" "${_items[$_i]}" >&9
+      else
+        printf "  ${MUTED}·${RESET} ${MUTED}%s${RESET}\033[K\n" "${_items[$_i]}" >&9
+      fi
+    done
+
+    # scroll hint below
+    local _remaining=$(( _n - _end ))
+    if [[ $_remaining -gt 0 ]]; then
+      printf "  ${MUTED}↓ %d more${RESET}\033[K\n" "$_remaining" >&9
+    else
+      printf "\033[K\n" >&9
+    fi
+  }
+
+  # total drawn lines = _view items + 2 hint lines — fixed for this pick session
+  local _dl=$(( _view < _n ? _view + 2 : _n + 2 ))
+
+  printf "\033[?25l" >&9
+  printf "\n  ${ACCENT_BOLD}%s${RESET}\n\n" "$_prompt" >&9
+  _draw
+
+  while true; do
+    IFS= read -rsn1 _k1 <&9
+    case "$_k1" in
+      $'\033')
+        IFS= read -rsn1 -t1 _k2 <&9 || true
+        IFS= read -rsn1 -t1 _k3 <&9 || true
+        if [[ "$_k2" == "[" ]]; then
+          case "$_k3" in
+            A) _pick_move_up   ;;
+            B) _pick_move_down ;;
+          esac
+        fi
+        ;;
+      $'\r'|$'\n'|'') break ;;
+      k) _pick_move_up   ;;
+      j) _pick_move_down ;;
+      q|$'\003') stty "$_old" <&9 2>/dev/null; trap - EXIT INT TERM; exec 9>&-; exit 1 ;;
+    esac
+    printf "\033[%dA" "$_dl" >&9
+    _draw
+  done
+
+  # collapse to just the selected line
+  printf "\033[%dA" "$_dl" >&9
+  printf "\033[J" >&9
+  printf "  ${ACCENT_BOLD}❯${RESET} ${BOLD}%s${RESET}\n" "${_items[$_cur]}" >&9
+
+  stty "$_old" <&9 2>/dev/null
+  trap - EXIT INT TERM
+  printf "\033[?25h" >&9
+  exec 9>&-
+
+  printf -v "$_var" '%d' "$_cur"
+}
+
+
+_pick_fallback() {
+  local _var="$1" _prompt="$2"; shift 2
+  local -a _items=("$@") _i=1 _choice
+  printf "\n\033[1m%s\033[0m\n\n" "$_prompt" >/dev/tty
+  for _item in "${_items[@]}"; do
+    printf "  %2d) %s\n" "$_i" "$_item" >/dev/tty
+    _i=$(( _i + 1 ))
+  done
+  printf "\nChoice (1-%d): " "${#_items[@]}" >/dev/tty
+  read -r _choice </dev/tty
+  [[ "$_choice" =~ ^[0-9]+$ ]] && (( _choice >= 1 && _choice <= ${#_items[@]} )) \
+    && printf -v "$_var" '%d' "$(( _choice - 1 ))" \
+    || printf -v "$_var" '%d' 0
+}
+
+
+# type selection
+select_type() {
+  load_config
+  local -a labels keys
+  for entry in "${TYPES[@]}"; do
+    local t e s d impact
+    IFS='|' read -r t e s d <<< "$entry"
+    case "$s" in
+      minor) impact="${GREEN}minor${RESET}" ;;
+      patch) impact="${YELLOW}patch${RESET}" ;;
+      *)     impact="" ;;
+    esac
+    # fixed 9-char visual slot for the badge so descriptions always align
+    local _badge
+    case "$s" in
+      minor) _badge="  ${MUTED}[${RESET}${GREEN}minor${RESET}${MUTED}]${RESET}" ;;
+      patch) _badge="  ${MUTED}[${RESET}${YELLOW}patch${RESET}${MUTED}]${RESET}" ;;
+      *)     _badge="         " ;;  # 9 spaces — same visual width as [minor]
+    esac
+    local _tp; printf -v _tp '%-10s' "$t"
+    labels+=("$e  ${BOLD}${_tp}${RESET}${_badge}  ${MUTED}$d${RESET}")
+    keys+=("$t")
+  done
+  local idx
+  _pick idx "Select commit type:" "${labels[@]}"
+  SELECTED_TYPE="${keys[$idx]}"
+}
+
+# scope selection
+select_scope() {
+  if [[ ${#CUSTOM_SCOPES[@]} -gt 0 ]]; then
+    local -a labels
+    for _sc in "${CUSTOM_SCOPES[@]}"; do
+      labels+=("${BOLD}$_sc${RESET}")
+    done
+    labels+=("${MUTED}─  custom${RESET}  ${MUTED}type your own${RESET}")
+    labels+=("${MUTED}─  skip${RESET}")
+    local idx
+    _pick idx "scope" "${labels[@]}"
+    local _custom_idx=$(( ${#CUSTOM_SCOPES[@]} ))
+    local _skip_idx=$(( ${#CUSTOM_SCOPES[@]} + 1 ))
+    if (( idx < _custom_idx )); then
+      # predefined scope chosen
+      SELECTED_SCOPE="${CUSTOM_SCOPES[$idx]}"
+      return 0
+    elif (( idx == _custom_idx )); then
+      # custom free-text
+      printf "\n  ${ACCENT_BOLD}scope${RESET}  ${MUTED}enter custom scope${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+      read -r SELECTED_SCOPE </dev/tty
+      return 0
+    else
+      # skip
+      SELECTED_SCOPE=""
+      return 0
+    fi
+  fi
+  # no configured scopes — free-text input
+  printf "\n  ${ACCENT_BOLD}scope${RESET}  ${MUTED}leave blank to omit${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+  read -r SELECTED_SCOPE </dev/tty
+}
+
+# description input
+input_description() {
+  printf "\n  ${ACCENT_BOLD}description${RESET}  ${MUTED}imperative, present tense${RESET}\n" >/dev/tty
+  local desc
+  while true; do
+    printf "  ${ACCENT}›${RESET} " >/dev/tty
+    read -r desc </dev/tty
+    if [[ -z "$desc" ]]; then
+      warn "Description is required"
+    elif (( ${#desc} > 100 )); then
+      warn "Description is ${#desc} chars — keep it under 72 for readability"
+      printf "  ${YELLOW}use anyway?${RESET} ${MUTED}[y/N]${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+      read -r confirm </dev/tty
+      [[ "$confirm" =~ ^[yY]$ ]] && { SELECTED_DESC="$desc"; return 0; }
+    else
+      SELECTED_DESC="$desc"
+      return 0
+    fi
+  done
+}
+
+# body input
+input_body() {
+  printf "\n  ${ACCENT_BOLD}body${RESET}  ${MUTED}optional — press Enter to skip${RESET}\n" >/dev/tty
+  printf "  ${ACCENT}›${RESET} " >/dev/tty
+  local line
+  read -r line </dev/tty
+  SELECTED_BODY="$line"
+}
+
+# breaking change
+input_breaking() {
+  printf "\n  ${ACCENT_BOLD}breaking change?${RESET}  ${MUTED}[y/N]${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+  read -r ans </dev/tty
+  if [[ "$ans" =~ ^[yY]$ ]]; then
+    IS_BREAKING=1
+    printf "  ${RED}breaking change${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+    read -r BREAKING_DESC </dev/tty
+  else
+    IS_BREAKING=0
+    BREAKING_DESC=""
+  fi
+}
+
+# footer (issue refs)
+input_footer() {
+  printf "\n  ${ACCENT_BOLD}footer${RESET}  ${MUTED}e.g. Closes #42 — leave blank to skip${RESET}\n" >/dev/tty
+  printf "  ${ACCENT}›${RESET} " >/dev/tty
+  read -r SELECTED_FOOTER </dev/tty
+}
+
+# assemble commit message
+assemble_message() {
+  local header
+  if [[ -n "$SELECTED_SCOPE" ]]; then
+    header="${SELECTED_TYPE}(${SELECTED_SCOPE})"
+  else
+    header="${SELECTED_TYPE}"
+  fi
+
+  if [[ $IS_BREAKING -eq 1 ]]; then
+    header="${header}!"
+  fi
+
+  header="${header}: ${SELECTED_DESC}"
+
+  local msg="$header"
+
+  if [[ -n "$SELECTED_BODY" ]]; then
+    msg="${msg}"$'\n\n'"${SELECTED_BODY}"
+  fi
+
+  if [[ $IS_BREAKING -eq 1 && -n "$BREAKING_DESC" ]]; then
+    msg="${msg}"$'\n\n'"BREAKING CHANGE: ${BREAKING_DESC}"
+  fi
+
+  if [[ -n "$SELECTED_FOOTER" ]]; then
+    msg="${msg}"$'\n\n'"${SELECTED_FOOTER}"
+  fi
+
+  COMMIT_MESSAGE="$msg"
+}
+
+# confirm and commit
+confirm_and_commit() {
+  printf "\n  ${MUTED}╭─ commit message ──────────────────────────────╮${RESET}\n" >/dev/tty
+  while IFS= read -r _line; do
+    printf "  ${MUTED}│${RESET}  ${BOLD}%s${RESET}\n" "$_line" >/dev/tty
+  done <<< "$COMMIT_MESSAGE"
+  printf "  ${MUTED}╰───────────────────────────────────────────────╯${RESET}\n" >/dev/tty
+
+  printf "\n  ${ACCENT_BOLD}commit?${RESET}  ${MUTED}[Y/n/e]${RESET}  ${ACCENT}›${RESET} " >/dev/tty
+  read -r ans </dev/tty
+
+  case "$ans" in
+    ""|y|Y|yes|Yes|YES)
+      git commit -m "$COMMIT_MESSAGE"
+      printf "\n"; success "${BOLD}committed${RESET}"
+      ;;
+    e|E|edit|Edit|EDIT)
+      local tmpfile
+      tmpfile=$(mktemp /tmp/cmt-commit-XXXXXX)
+      echo "$COMMIT_MESSAGE" > "$tmpfile"
+      "${EDITOR:-vi}" "$tmpfile"
+      COMMIT_MESSAGE=$(cat "$tmpfile")
+      rm -f "$tmpfile"
+      git commit -m "$COMMIT_MESSAGE"
+      printf "\n"; success "${BOLD}committed${RESET}"
+      ;;
+    *)
+      warn "Commit aborted."
+      exit 0
+      ;;
+  esac
+}
+
+# cmd: commit
+cmd_commit() {
+  # --write-only: used by prepare-commit-msg hook — run picker, print message to
+  # stdout, do NOT call git commit (git will do that after the hook returns).
+  local write_only=0
+  [[ "${1:-}" == "--write-only" ]] && write_only=1
+
+  if [[ $write_only -eq 0 ]]; then
+    git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
+    if git diff --cached --quiet 2>/dev/null; then
+      warn "No staged changes detected. Did you forget \`git add\`?"
+      printf "${DIM}Continue anyway? [y/N]:${RESET} " >/dev/tty
+      read -r cont </dev/tty
+      [[ "$cont" =~ ^[yY]$ ]] || exit 0
+    fi
+  fi
+
+  printf "\n  ${ACCENT_BOLD}cmt${RESET}  ${MUTED}conventional commits  v%s${RESET}\n" "$CC_VERSION" >/dev/tty
+  printf "  ${MUTED}─────────────────────────────────────${RESET}\n" >/dev/tty
+
+  SELECTED_TYPE="" SELECTED_SCOPE="" SELECTED_DESC=""
+  SELECTED_BODY="" SELECTED_FOOTER="" IS_BREAKING=0 BREAKING_DESC=""
+
+  select_type
+  select_scope
+  input_description
+  input_body
+  input_breaking
+  input_footer
+  assemble_message
+
+  if [[ $write_only -eq 1 ]]; then
+    # show preview on /dev/tty (git won't capture it — only stdout goes to the msg file)
+    printf "\n  ${MUTED}╭─ commit message ──────────────────────────────╮${RESET}\n" >/dev/tty
+    while IFS= read -r _line; do
+      printf "  ${MUTED}│${RESET}  ${BOLD}%s${RESET}\n" "$_line" >/dev/tty
+    done <<< "$COMMIT_MESSAGE"
+    printf "  ${MUTED}╰───────────────────────────────────────────────╯${RESET}\n\n" >/dev/tty
+    printf '%s' "$COMMIT_MESSAGE"
+    return 0
+  fi
+
+  confirm_and_commit
+}
+
+# cmd: lint
+cmd_lint() {
+  local msg_file="${1:-}"
+  local msg
+
+  if [[ -n "$msg_file" ]]; then
+    [[ -f "$msg_file" ]] || die "File not found: $msg_file"
+    msg=$(cat "$msg_file")
+  else
+    printf "${BOLD}Paste commit message to lint:${RESET}\n"
+    msg=$(cat)
+  fi
+
+  lint_message "$msg"
+}
+
+lint_message() {
+  local msg="$1"
+  # extract first line — pure bash, no subprocess
+  local header="${msg%%$'\n'*}"
+
+  local errors=() warnings=()
+  load_config
+
+  # rule #1: header format
+  local _p_hdr='^[a-z][a-z0-9_-]*(\([^)]*\))?!?:[[:space:]].+'
+  if ! [[ "$header" =~ $_p_hdr ]]; then
+    errors+=("Header must match: type(scope)?: description")
+  else
+    # rule #2: valid type — extract via BASH_REMATCH from a fresh match
+    local _p_type='^([a-z][a-z0-9_-]*)'
+    local commit_type=""
+    [[ "$header" =~ $_p_type ]] && commit_type="${BASH_REMATCH[1]}"
+    local valid_type=0
+    for entry in "${TYPES[@]}"; do
+      local t; t="${entry%%|*}"
+      [[ "$t" == "$commit_type" ]] && { valid_type=1; break; }
+    done
+    [[ $valid_type -eq 0 ]] && errors+=("Unknown type '${commit_type}'. Valid: $(IFS=, ; echo "${TYPES[*]%%|*}")")
+
+    # rule #3: description not empty — strip type(scope)!: prefix via parameter expansion
+    local desc="${header#*: }"
+    [[ -z "$desc" ]] && errors+=("Description must not be empty")
+
+    # rule #4: description not capitalized
+    if [[ "${desc:0:1}" =~ [A-Z] ]]; then
+      if [[ $RULE_DISALLOW_UPPER -eq 1 ]]; then
+        errors+=("Description must start with a lowercase letter")
+      else
+        warnings+=("Description starts with uppercase — prefer lowercase")
+      fi
+    fi
+
+    # rule #5: no trailing period
+    if [[ "$desc" =~ \.$ ]]; then
+      if [[ $RULE_DISALLOW_PERIOD -eq 1 ]]; then
+        errors+=("Description must not end with a period")
+      else
+        warnings+=("Description ends with a period — omit it")
+      fi
+    fi
+
+    # rule #6: header length
+    (( ${#header} > RULE_MAX_HEADER )) && warnings+=("Header is ${#header} chars — aim for ≤${RULE_MAX_HEADER}")
+
+    # rule #7: requireScope
+    if [[ $RULE_REQUIRE_SCOPE -eq 1 ]]; then
+      local _p_scope='^[a-z][a-z0-9_-]*\([^)]+\)'
+      [[ "$header" =~ $_p_scope ]] || errors+=("Scope is required — e.g. feat(auth): ...")
+    fi
+  fi
+
+  # rule #8: blank line between header and body — pure bash string ops
+  if [[ "$msg" == *$'\n'* ]]; then
+    local _rest="${msg#*$'\n'}"
+    local _second="${_rest%%$'\n'*}"
+    [[ -n "$_second" ]] && errors+=("Blank line required between header and body")
+  fi
+
+  # report
+  local exit_code=0
+  printf "\n  ${ACCENT_BOLD}lint${RESET}  ${MUTED}%s${RESET}\n\n" "$header"
+
+  if [[ ${#errors[@]} -gt 0 ]]; then
+    for e in "${errors[@]}"; do
+      printf "  ${RED}✖${RESET}  %s\n" "$e"
+    done
+    exit_code=1
+  fi
+
+  if [[ ${#warnings[@]} -gt 0 ]]; then
+    for w in "${warnings[@]}"; do
+      printf "  ${YELLOW}⚑${RESET}  ${YELLOW}%s${RESET}\n" "$w"
+    done
+  fi
+
+  if [[ ${#errors[@]} -eq 0 && ${#warnings[@]} -eq 0 ]]; then
+    success "valid conventional commit"
+  elif [[ ${#errors[@]} -eq 0 ]]; then
+    printf "\n"; success "valid — with ${#warnings[@]} suggestion(s)"
+  fi
+
+  printf "\n"
+  return $exit_code
+}
+
+# hook snippet
+# The only hook cmt installs is prepare-commit-msg.
+# It intercepts plain `git commit`, runs the picker, writes the message.
+# commit-msg is not needed — the message is already conventional when we write it.
+_hook_snippet() {
+  local _cmt_path="$1"
+  # variables prefixed with \ are meant for the hook at runtime (not expanded now).
+  # _cmt_path IS expanded now; it records the install-time absolute path.
+  cat << SNIPPET
+# >>> cmt — Conventional Commits CLI
+[ -n "\${2:-}" ] && exit 0
+for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
+  [ -x "\$_p" ] && { "\$_p" commit --write-only > "\$1"; exit 0; }
+done
+# <<< cmt
+SNIPPET
+}
+
+# lint snippet (commit-msg hook)
+_lint_snippet() {
+  local _cmt_path="$1"
+  cat << SNIPPET
+# >>> cmt-lint — Conventional Commits CLI
+for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
+  [ -x "\$_p" ] && { "\$_p" lint "\$1"; exit \$?; }
+done
+# <<< cmt-lint
+SNIPPET
+}
+
+# install or append cmt block to a hook file
+# usage: _install_hook <path> <needs_shebang> <cmt_path> [snippet_fn]
+_install_hook() {
+  local path="$1" shebang="${2:-1}" cc_path="$3" snippet_fn="${4:-_hook_snippet}"
+  local marker; [[ "$snippet_fn" == "_lint_snippet" ]] && marker="cmt-lint" || marker="cmt"
+
+  if [[ -f "$path" ]]; then
+    if grep -q ">>> ${marker}" "$path" 2>/dev/null; then
+      local tmp; tmp=$(mktemp)
+      awk "/# >>> ${marker}/{skip=1} !skip{print} /# <<< ${marker}/{skip=0}" "$path" > "$tmp"
+      "$snippet_fn" "$cc_path" >> "$tmp"
+      mv "$tmp" "$path"
+      success "Updated ${marker} block in $(basename "$(dirname "$path")")/$(basename "$path")"
+    else
+      "$snippet_fn" "$cc_path" >> "$path"
+      success "Appended to $(basename "$(dirname "$path")")/$(basename "$path")"
+    fi
+  else
+    [[ "$shebang" == "1" ]] && printf '#!/usr/bin/env bash\n' > "$path"
+    "$snippet_fn" "$cc_path" >> "$path"
+    chmod +x "$path"
+    success "Created $(basename "$(dirname "$path")")/$(basename "$path")"
+  fi
+  chmod +x "$path"
+}
+
+# cmd: log
+cmd_log() {
+  git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
+  load_config
+
+  local limit="${1:-20}"
+  printf "\n  ${ACCENT_BOLD}log${RESET}  ${MUTED}last %s commits${RESET}\n\n" "$limit"
+
+  local _p_log_type='^([a-z][a-z0-9_-]*)[(:!]'
+  while IFS='|' read -r hash short_hash date author subject; do
+    local type="" emoji color
+    [[ "$subject" =~ $_p_log_type ]] && type="${BASH_REMATCH[1]}"
+    emoji="·"; color="$RESET"
+
+    if [[ -n "$type" ]]; then
+      for entry in "${TYPES[@]}"; do
+        local t e
+        IFS='|' read -r t e _ _ <<< "$entry"
+        if [[ "$t" == "$type" ]]; then emoji="$e"; break; fi
+      done
+      case "$type" in
+        feat)           color="$GREEN"  ;;
+        fix|perf)       color="$YELLOW" ;;
+        revert)         color="$RED"    ;;
+        *)              color="$MUTED"  ;;
+      esac
+    fi
+
+    local breaking=""
+    [[ "$subject" == *"!:"* ]] && breaking=" ${RED}breaking${RESET}"
+
+    printf "  ${MUTED}%s${RESET}  %s  ${color}${BOLD}%s${RESET}%s\n"       "$short_hash" "$emoji" "$subject" "$breaking"
+    printf "  ${MUTED}%s  %s${RESET}\n\n" "$date" "$author"
+
+  done < <(git log -"$limit" --format="%H|%h|%ad|%an|%s" --date=short 2>/dev/null)
+}
+
+# cmd: types
+cmd_types() {
+  load_config
+  printf "\n  ${ACCENT_BOLD}commit types${RESET}\n\n"
+  for entry in "${TYPES[@]}"; do
+    local t e s d badge
+    IFS='|' read -r t e s d <<< "$entry"
+    badge=""
+    case "$s" in
+      minor) badge="  ${GREEN}minor${RESET}" ;;
+      patch) badge="  ${YELLOW}patch${RESET}" ;;
+    esac
+    printf "  %s  ${BOLD}%-12s${RESET}${badge}  ${MUTED}%s${RESET}\n" "$e" "$t" "$d"
+  done
+  printf "\n"
+  if [[ -f "$CC_CONFIG_FILE" ]]; then
+    printf "  ${MUTED}custom types from .cmt.json included above${RESET}\n\n"
+  else
+    printf "  ${MUTED}run cmt init to configure custom types${RESET}\n\n"
+  fi
+}
+
+
+# cmd: init
+cmd_init() {
+  git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
+
+  local git_root cc_path
+  git_root=$(git rev-parse --show-toplevel)
+  cc_path=$(realpath "$0")
+
+  # .cmt.json
+  if [[ ! -f "${git_root}/${CC_CONFIG_FILE}" ]]; then
+    cat > "${git_root}/${CC_CONFIG_FILE}" << JSONEOF
+{
+  "\$schema": "${CC_SCHEMA_URL}",
+  "version": "1.0.0",
+  "customTypes": [
+    { "type": "wip", "emoji": "🚧", "semver": "none", "description": "Work in progress" }
+  ],
+  "scopes": [],
+  "rules": {
+    "maxHeaderLength": 72,
+    "requireScope": false,
+    "allowBreakingChanges": ["feat", "fix"],
+    "disallowUpperCaseDescription": false,
+    "disallowTrailingPeriod": false
+  }
+}
+JSONEOF
+    success "Created .cmt.json"
+  fi
+
+  local use_husky=0 use_lint=0
+  for arg in "$@"; do
+    [[ "$arg" == "--husky" ]] && use_husky=1 || true
+    [[ "$arg" == "--lint"  ]] && use_lint=1  || true
+  done
+
+  if [[ $use_husky -eq 1 ]]; then
+    mkdir -p "${git_root}/.husky"
+    _install_hook "${git_root}/.husky/prepare-commit-msg" 0 "$cc_path"
+    if [[ $use_lint -eq 1 ]]; then
+      _install_hook "${git_root}/.husky/commit-msg" 0 "$cc_path" _lint_snippet
+    fi
+    printf "  ${DIM}Commit .husky/ hooks to share with your team.${RESET}\n"
+  else
+    _install_hook "${git_root}/.git/hooks/prepare-commit-msg" 1 "$cc_path"
+    if [[ $use_lint -eq 1 ]]; then
+      _install_hook "${git_root}/.git/hooks/commit-msg" 1 "$cc_path" _lint_snippet
+    fi
+  fi
+
+  printf "\n"
+  success "Done."
+  printf "  ${DIM}git commit  or  cmt commit — both work${RESET}\n\n"
+}
+
+# cmd: uninstall
+cmd_uninstall() {
+  git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
+  local git_root; git_root=$(git rev-parse --show-toplevel)
+  local removed=0
+
+  # remove a named cmt block from a hook file.
+  # deletes the file entirely if the block was the only content.
+  _remove_block() {
+    local path="$1" marker="$2"
+    [[ -f "$path" ]] || return 0
+    grep -q "# >>> ${marker} " "$path" 2>/dev/null || return 0
+
+    local tmp
+    tmp=$(mktemp)
+    # match opening line as prefix ("# >>> cmt " catches "cmt" but not "cmt-lint")
+    awk "/^# >>> ${marker} /{skip=1} !skip{print} /^# <<< ${marker}\$/{skip=0}" "$path" > "$tmp"
+
+    local has_content
+    has_content=$(grep -v '^#!' "$tmp" | grep -v '^#' | grep -cv '^[[:space:]]*$' || true)
+    if [[ "$has_content" -eq 0 ]]; then
+      rm "$path"
+      success "Removed $(basename "$(dirname "$path")")/$(basename "$path")"
+    else
+      mv "$tmp" "$path"
+      success "Removed ${marker} block from $(basename "$(dirname "$path")")/$(basename "$path")"
+    fi
+    rm -f "$tmp"
+    removed=1
+  }
+
+  for dir in "${git_root}/.git/hooks" "${git_root}/.husky"; do
+    _remove_block "${dir}/prepare-commit-msg" "cmt"
+    _remove_block "${dir}/commit-msg" "cmt-lint"
+  done
+
+  # clean up legacy commit-msg hooks from older cmt versions
+  for path in "${git_root}/.git/hooks/commit-msg" "${git_root}/.husky/commit-msg"; do
+    if [[ -f "$path" ]] && grep -q "Installed by cmt" "$path" 2>/dev/null; then
+      rm "$path"
+      success "Removed legacy $(basename "$path")"
+      removed=1
+    fi
+  done
+
+  # remove .cmt.json config
+  if [[ -f "${git_root}/${CC_CONFIG_FILE}" ]]; then
+    rm "${git_root}/${CC_CONFIG_FILE}"
+    success "Removed .cmt.json"
+    removed=1
+  fi
+
+  [[ $removed -eq 0 ]] && info "Nothing to remove."
+  printf "\n"
+}
+
+
+# cmd: version
+cmd_version() {
+  printf "cmt version %s\n" "$CC_VERSION"
+}
+
+# cmd: help
+cmd_help() {
+  printf "
+${BOLD}${CYAN}cmt${RESET} v${CC_VERSION} — Conventional Commits CLI
+
+${BOLD}USAGE${RESET}
+  cmt <command> [options]
+
+${BOLD}COMMANDS${RESET}
+  ${CYAN}init${RESET} [--husky] [--lint]   Create .cmt.json + install prepare-commit-msg hook
+                    --husky  write to .husky/  (husky v9, committable)
+                    --lint   also install commit-msg linting hook
+                    default  write to .git/hooks/  (local)
+
+  ${CYAN}commit${RESET}              Interactive commit builder
+
+  ${CYAN}lint${RESET} [file]         Lint a commit message file or stdin
+
+  ${CYAN}log${RESET} [n]             Pretty log — last n commits  (default: 20)
+
+  ${CYAN}types${RESET}               List available types
+
+  ${CYAN}uninstall${RESET}           Remove cmt-managed hooks
+
+${BOLD}EXAMPLES${RESET}
+  cmt init                   # set up repo — done in one step
+  cmt init --husky           # same, but writes to .husky/ for husky v9
+  cmt commit                 # guided commit
+  echo 'fix: typo' | cmt lint
+  git log --format=%s | cmt lint   # lint every commit on a branch
+
+${BOLD}INTEGRATIONS${RESET}
+  Husky v9    cmt init --husky  →  .husky/prepare-commit-msg  (commit it, team shares it)
+  lint-staged add to .husky/pre-commit:  npx lint-staged
+  GitHub CI   echo \"\$(git log -1 --format=%s)\" | cmt lint
+
+${BOLD}CONFIG${RESET}  .cmt.json  (JSON Schema → intellisense in VS Code / JetBrains)
+  {
+    \"customTypes\": [{ \"type\": \"wip\", \"emoji\": \"🚧\", \"semver\": \"none\", \"description\": \"...\" }],
+    \"scopes\":      [\"auth\", \"api\", \"ui\"],
+    \"rules\":       { \"maxHeaderLength\": 72, \"requireScope\": false }
+  }
+
+"
+}
+
+# dispatch
+main() {
+  case "${1:-help}" in
+    commit|c)   shift; cmd_commit "$@" ;;
+    lint|l)     shift; cmd_lint "$@" ;;
+    init)       shift; cmd_init "$@" ;;
+    log)        shift; cmd_log "$@" ;;
+    types|t)    shift; cmd_types "$@" ;;
+    uninstall)  shift; cmd_uninstall "$@" ;;
+    version|-v|--version) cmd_version ;;
+    help|-h|--help|*) cmd_help ;;
+  esac
+}
+
+main "$@"

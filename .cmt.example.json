@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
+  "version": "1.0.0",
+  "customTypes": [
+    {
+      "type": "wip",
+      "emoji": "🚧",
+      "semver": "none",
+      "description": "Work in progress"
+    },
+    {
+      "type": "security",
+      "emoji": "🔒",
+      "semver": "patch",
+      "description": "Security fix"
+    }
+  ],
+  "scopes": ["auth", "api", "ui", "db"],
+  "rules": {
+    "maxHeaderLength": 72,
+    "requireScope": false,
+    "allowBreakingChanges": ["feat", "fix"],
+    "disallowUpperCaseDescription": false,
+    "disallowTrailingPeriod": false
+  }
+}

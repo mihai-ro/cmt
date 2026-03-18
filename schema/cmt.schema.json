@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
+  "title": "cmt — Conventional Commits configuration",
+  "description": "Configuration file for cmt, the zero-dependency Conventional Commits CLI. Place as .cmt.json at your repository root.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema pointer — enables editor intellisense. Leave as-is."
+    },
+
+    "version": {
+      "type": "string",
+      "description": "Config schema version. Currently '1.0.0'.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0",
+      "examples": ["1.0.0"]
+    },
+
+    "customTypes": {
+      "type": "array",
+      "description": "Additional commit types appended after the built-in ones (feat, fix, docs, …).",
+      "default": [],
+      "items": {
+        "type": "object",
+        "description": "A single custom commit type.",
+        "additionalProperties": false,
+        "required": ["type", "description"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The type keyword used in the commit header, e.g. 'wip' or 'security'. Must be lowercase letters, digits, hyphens or underscores.",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "examples": ["wip", "security", "i18n", "release", "deps"]
+          },
+          "emoji": {
+            "type": "string",
+            "description": "Optional emoji displayed in 'cmt log' and the commit picker.",
+            "default": "⚙️",
+            "examples": ["🚧", "🔒", "🌍", "🚀", "📦"]
+          },
+          "semver": {
+            "type": "string",
+            "description": "The Semantic Versioning impact this type carries. Use 'none' for types that don't affect the public API.",
+            "enum": ["major", "minor", "patch", "none"],
+            "default": "none"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short human-readable description shown in the interactive commit picker.",
+            "minLength": 1,
+            "examples": [
+              "Work in progress — not ready for review",
+              "Security fix or hardening"
+            ]
+          }
+        }
+      }
+    },
+
+    "scopes": {
+      "type": "array",
+      "description": "Suggested scopes shown in the 'cmt commit' scope picker. Users can also type a custom scope or skip. Leave empty for free-text input only. E.g. ['auth', 'api', 'ui', 'db'].",
+      "default": [],
+      "items": {
+        "type": "string",
+        "description": "A single scope name. Lowercase, no spaces.",
+        "pattern": "^[a-z][a-z0-9_/-]*$",
+        "examples": ["auth", "api", "ui", "db", "cli", "docs", "deps", "config"]
+      },
+      "uniqueItems": true
+    },
+
+    "rules": {
+      "type": "object",
+      "description": "Lint rules applied by 'cmt lint' and the commit-msg git hook.",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "maxHeaderLength": {
+          "type": "integer",
+          "description": "Maximum character length of the commit header line. Headers longer than this emit a warning. Default: 72.",
+          "minimum": 20,
+          "maximum": 200,
+          "default": 72,
+          "examples": [50, 72, 100]
+        },
+
+        "requireScope": {
+          "type": "boolean",
+          "description": "When true, 'cmt lint' will error if no scope is present in the commit header. Default: false.",
+          "default": false
+        },
+
+        "allowBreakingChanges": {
+          "type": "array",
+          "description": "Commit types allowed to carry a BREAKING CHANGE footer or '!' marker. Default: [\"feat\", \"fix\"].",
+          "default": ["feat", "fix"],
+          "items": {
+            "type": "string",
+            "examples": ["feat", "fix", "refactor", "perf"]
+          },
+          "uniqueItems": true
+        },
+
+        "disallowUpperCaseDescription": {
+          "type": "boolean",
+          "description": "When true, descriptions starting with an uppercase letter are an error (not just a warning). Default: false.",
+          "default": false
+        },
+
+        "disallowTrailingPeriod": {
+          "type": "boolean",
+          "description": "When true, descriptions ending with a period are an error (not just a warning). Default: false.",
+          "default": false
+        }
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cc.schema.json",
+      "version": "1.0.0",
+      "customTypes": [
+        {
+          "type": "wip",
+          "emoji": "🚧",
+          "semver": "none",
+          "description": "Work in progress — not ready for review"
+        },
+        {
+          "type": "security",
+          "emoji": "🔒",
+          "semver": "patch",
+          "description": "Security fix or hardening"
+        }
+      ],
+      "scopes": ["auth", "api", "ui", "db"],
+      "rules": {
+        "maxHeaderLength": 72,
+        "requireScope": false,
+        "allowBreakingChanges": ["feat", "fix", "refactor"]
+      }
+    }
+  ]
+}

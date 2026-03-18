@@ -227,7 +227,7 @@ load_config() {
 _pick() {
   local _var="$1" _prompt="$2"; shift 2
   local -a _items=("$@")
-  local _n=${#_items[@]} _cur=0 _top=0 _view=7 _k1 _k2 _k3
+  local _n=${#_items[@]} _cur=0 _top=0 _view=7 _k1 _k2 _k3 _last_dl=0
 
   exec 9<>/dev/tty
 
@@ -259,17 +259,17 @@ _pick() {
   }
 
   # draw the visible window of _view items starting at _top
+  # updates _last_dl with the number of lines actually drawn
   _draw() {
+    _last_dl=0
     local _i _end
     _end=$(( _top + _view ))
     [[ $_end -gt $_n ]] && _end=$_n
-    local _visible=$(( _end - _top ))
 
-    # scroll hint above
+    # scroll hint above — only when items are hidden above
     if [[ $_top -gt 0 ]]; then
       printf "  ${MUTED}↑ %d more${RESET}\033[K\n" "$_top" >&9
-    else
-      printf "\033[K\n" >&9
+      _last_dl=$(( _last_dl + 1 ))
     fi
 
     for (( _i=_top; _i<_end; _i++ )); do
@@ -278,6 +278,7 @@ _pick() {
       else
         printf "  ${MUTED}·${RESET} ${MUTED}%s${RESET}\033[K\n" "${_items[$_i]}" >&9
       fi
+      _last_dl=$(( _last_dl + 1 ))
     done
 
     # scroll hint below
@@ -287,13 +288,11 @@ _pick() {
     else
       printf "\033[K\n" >&9
     fi
+    _last_dl=$(( _last_dl + 1 ))
   }
 
-  # total drawn lines = _view items + 2 hint lines — fixed for this pick session
-  local _dl=$(( _view < _n ? _view + 2 : _n + 2 ))
-
   printf "\033[?25l" >&9
-  printf "\n  ${ACCENT_BOLD}%s${RESET}\n" "$_prompt" >&9
+  printf "\n  ${ACCENT_BOLD}%s${RESET}\n\n" "$_prompt" >&9
   _draw
 
   while true; do
@@ -314,12 +313,13 @@ _pick() {
       j) _pick_move_down ;;
       q|$'\003') stty "$_old" <&9 2>/dev/null; trap - EXIT INT TERM; exec 9>&-; exit 1 ;;
     esac
-    printf "\033[%dA" "$_dl" >&9
+    printf "\033[%dA" "$_last_dl" >&9
+    printf "\033[J" >&9
     _draw
   done
 
   # collapse to just the selected line
-  printf "\033[%dA" "$_dl" >&9
+  printf "\033[%dA" "$_last_dl" >&9
   printf "\033[J" >&9
   printf "  ${ACCENT_BOLD}❯${RESET} ${BOLD}%s${RESET}\n" "${_items[$_cur]}" >&9
 

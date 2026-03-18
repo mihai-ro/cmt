@@ -492,13 +492,42 @@ assemble_message() {
   COMMIT_MESSAGE="$msg"
 }
 
+_print_commit_box() {
+  local msg="$1" _max=0 _line _W _content_w _bar _bottom _max_W
+
+  _max_W=$(( ${COLUMNS:-$(tput cols 2>/dev/null || echo 80)} - 2 ))
+  [[ $_max_W -lt 50 ]] && _max_W=50
+
+  while IFS= read -r _line; do
+    [[ ${#_line} -gt $_max ]] && _max=${#_line}
+  done <<< "$msg"
+
+  _W=$(( _max + 6 ))
+  [[ $_W -lt 50 ]] && _W=50
+  [[ $_W -gt $_max_W ]] && _W=$_max_W
+  _content_w=$(( _W - 6 ))
+
+  printf -v _bar '%*s' $(( _W - 19 )) ''; _bar=${_bar// /─}
+  printf "\n  ${MUTED}╭─ commit message %s╮${RESET}\n" "$_bar" >/dev/tty
+  while IFS= read -r _line; do
+    printf "  ${MUTED}│${RESET}  ${BOLD}%-${_content_w}s${RESET}  ${MUTED}│${RESET}\n" "$_line" >/dev/tty
+  done <<< "$(printf '%s\n' "$msg" | awk -v w="$_content_w" '{
+    if (length($0) <= w) { print; next }
+    line = ""
+    for (i = 1; i <= NF; i++) {
+      if (line == "") { line = $i }
+      else if (length(line) + 1 + length($i) <= w) { line = line " " $i }
+      else { print line; line = $i }
+    }
+    if (line != "") print line
+  }')"
+  printf -v _bottom '%*s' $(( _W - 2 )) ''; _bottom=${_bottom// /─}
+  printf "  ${MUTED}╰%s╯${RESET}\n" "$_bottom" >/dev/tty
+}
+
 # confirm and commit
 confirm_and_commit() {
-  printf "\n  ${MUTED}╭─ commit message ──────────────────────────────╮${RESET}\n" >/dev/tty
-  while IFS= read -r _line; do
-    printf "  ${MUTED}│${RESET}  ${BOLD}%s${RESET}\n" "$_line" >/dev/tty
-  done <<< "$COMMIT_MESSAGE"
-  printf "  ${MUTED}╰───────────────────────────────────────────────╯${RESET}\n" >/dev/tty
+  _print_commit_box "$COMMIT_MESSAGE"
 
   printf "\n  ${ACCENT_BOLD}commit?${RESET}  ${MUTED}[Y/n/e]${RESET}  ${ACCENT}›${RESET} " >/dev/tty
   read -r ans </dev/tty
@@ -558,11 +587,8 @@ cmd_commit() {
 
   if [[ $write_only -eq 1 ]]; then
     # show preview on /dev/tty (git won't capture it — only stdout goes to the msg file)
-    printf "\n  ${MUTED}╭─ commit message ──────────────────────────────╮${RESET}\n" >/dev/tty
-    while IFS= read -r _line; do
-      printf "  ${MUTED}│${RESET}  ${BOLD}%s${RESET}\n" "$_line" >/dev/tty
-    done <<< "$COMMIT_MESSAGE"
-    printf "  ${MUTED}╰───────────────────────────────────────────────╯${RESET}\n\n" >/dev/tty
+    _print_commit_box "$COMMIT_MESSAGE"
+    printf "\n" >/dev/tty
     printf '%s' "$COMMIT_MESSAGE"
     return 0
   fi

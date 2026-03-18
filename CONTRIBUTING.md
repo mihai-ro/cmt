@@ -21,7 +21,7 @@ npm link
 cmt version
 
 # When done:
-npm unlink -g cmt-cli
+npm unlink -g @mihairo/cmt
 ```
 
 **Option C — direct path**

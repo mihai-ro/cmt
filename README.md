@@ -2,7 +2,7 @@
 
 > Conventional Commits CLI — zero dependencies, one bash script.
 
-[![npm](https://img.shields.io/npm/v/cmt-cli?label=npm)](https://npmjs.com/package/cmt-cli)
+[![npm](https://img.shields.io/npm/v/@mihairo/cmt?label=npm)](https://npmjs.com/package/@mihairo/cmt)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196?logo=conventionalcommits)](https://conventionalcommits.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -13,7 +13,7 @@
 **npm (any project — no Node required at runtime)**
 
 ```bash
-npm install -g cmt-cli
+npm install -g @mihairo/cmt
 ```
 
 **Homebrew**

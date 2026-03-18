@@ -14,10 +14,10 @@
 
     "version": {
       "type": "string",
-      "description": "Config schema version. Currently '1.1.0'.",
+      "description": "Config schema version. Currently '1.1.1'.",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "default": "1.1.0",
-      "examples": ["1.1.0"]
+      "default": "1.1.1",
+      "examples": ["1.1.1"]
     },
 
     "customTypes": {
@@ -124,7 +124,7 @@
   "examples": [
     {
       "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cc.schema.json",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "customTypes": [
         {
           "type": "wip",

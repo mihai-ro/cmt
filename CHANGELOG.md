@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.1...@mihairo/cmt-v1.1.2) (2026-03-18)
+
+
+### Bug Fixes
+
+* picker and default commit ([#9](https://github.com/mihai-ro/cmt/issues/9)) ([e92831b](https://github.com/mihai-ro/cmt/commit/e92831b724a60c8e06a5f123d7cd2f865c9ad779))
+
 ## [1.1.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.0...@mihairo/cmt-v1.1.1) (2026-03-18)
 
 

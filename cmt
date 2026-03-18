@@ -6,7 +6,7 @@
 # =============================================================================
 set -euo pipefail
 
-CC_VERSION="1.0.0"
+CC_VERSION="1.1.0"
 CC_CONFIG_FILE=".cmt.json"
 CC_SCHEMA_URL="https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json"
 
@@ -831,7 +831,7 @@ cmd_init() {
     cat > "${git_root}/${CC_CONFIG_FILE}" << JSONEOF
 {
   "\$schema": "${CC_SCHEMA_URL}",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "customTypes": [
     { "type": "wip", "emoji": "🚧", "semver": "none", "description": "Work in progress" }
   ],

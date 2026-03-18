@@ -1,0 +1,28 @@
+{
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "@mihairo/cmt",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "cmt",
+          "searchBy": "string",
+          "data": [
+            {
+              "before": "CC_VERSION=\"",
+              "after": "\""
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

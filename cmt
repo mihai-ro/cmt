@@ -983,13 +983,15 @@ ${BOLD}CONFIG${RESET}  .cmt.json  (JSON Schema → intellisense in VS Code / Jet
 
 # dispatch
 main() {
-  case "${1:-help}" in
-    commit|c)   shift; cmd_commit "$@" ;;
-    lint|l)     shift; cmd_lint "$@" ;;
-    init)       shift; cmd_init "$@" ;;
-    log)        shift; cmd_log "$@" ;;
-    types|t)    shift; cmd_types "$@" ;;
-    uninstall)  shift; cmd_uninstall "$@" ;;
+  local cmd="${1:-commit}"
+  [[ $# -gt 0 ]] && shift
+  case "$cmd" in
+    commit|c)   cmd_commit "$@" ;;
+    lint|l)     cmd_lint "$@" ;;
+    init)       cmd_init "$@" ;;
+    log)        cmd_log "$@" ;;
+    types|t)    cmd_types "$@" ;;
+    uninstall)  cmd_uninstall "$@" ;;
     version|-v|--version) cmd_version ;;
     help|-h|--help|*) cmd_help ;;
   esac

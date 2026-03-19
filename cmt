@@ -6,9 +6,9 @@
 # =============================================================================
 set -euo pipefail
 
-CC_VERSION="1.1.2"
-CC_CONFIG_FILE=".cmt.json"
-CC_SCHEMA_URL="https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json"
+CMT_VERSION="1.1.2" # x-release-please-version
+CMT_CONFIG_FILE=".cmt.json"
+CMT_SCHEMA_URL="https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json"
 
 # colours
 if [[ -z "${NO_COLOR:-}" ]] && ([[ -t 1 ]] || [[ -c /dev/tty ]]); then
@@ -58,7 +58,7 @@ BUILTIN_TYPES=(
 
 # config loader
 load_config() {
-  local cfg="${CC_CONFIG_FILE}"
+  local cfg="${CMT_CONFIG_FILE}"
 
   TYPES=("${BUILTIN_TYPES[@]}")
   CUSTOM_SCOPES=()
@@ -563,7 +563,7 @@ cmd_commit() {
     fi
   fi
 
-  printf "\n  ${ACCENT_BOLD}cmt${RESET}  ${MUTED}conventional commits  v%s${RESET}\n" "$CC_VERSION" >/dev/tty
+  printf "\n  ${ACCENT_BOLD}cmt${RESET}  ${MUTED}conventional commits  v%s${RESET}\n" "$CMT_VERSION" >/dev/tty
   printf "  ${MUTED}─────────────────────────────────────${RESET}\n" >/dev/tty
 
   SELECTED_TYPE="" SELECTED_SCOPE="" SELECTED_DESC=""
@@ -727,23 +727,23 @@ SNIPPET
 # install or append cmt block to a hook file
 # usage: _install_hook <path> <needs_shebang> <cmt_path> [snippet_fn]
 _install_hook() {
-  local path="$1" shebang="${2:-1}" cc_path="$3" snippet_fn="${4:-_hook_snippet}"
+  local path="$1" shebang="${2:-1}" cmt_path="$3" snippet_fn="${4:-_hook_snippet}"
   local marker; [[ "$snippet_fn" == "_lint_snippet" ]] && marker="cmt-lint" || marker="cmt"
 
   if [[ -f "$path" ]]; then
     if grep -q ">>> ${marker}" "$path" 2>/dev/null; then
       local tmp; tmp=$(mktemp)
       awk "/# >>> ${marker}/{skip=1} !skip{print} /# <<< ${marker}/{skip=0}" "$path" > "$tmp"
-      "$snippet_fn" "$cc_path" >> "$tmp"
+      "$snippet_fn" "$cmt_path" >> "$tmp"
       mv "$tmp" "$path"
       success "Updated ${marker} block in $(basename "$(dirname "$path")")/$(basename "$path")"
     else
-      "$snippet_fn" "$cc_path" >> "$path"
+      "$snippet_fn" "$cmt_path" >> "$path"
       success "Appended to $(basename "$(dirname "$path")")/$(basename "$path")"
     fi
   else
     [[ "$shebang" == "1" ]] && printf '#!/usr/bin/env bash\n' > "$path"
-    "$snippet_fn" "$cc_path" >> "$path"
+    "$snippet_fn" "$cmt_path" >> "$path"
     chmod +x "$path"
     success "Created $(basename "$(dirname "$path")")/$(basename "$path")"
   fi
@@ -802,7 +802,7 @@ cmd_types() {
     printf "  %s  ${BOLD}%-12s${RESET}${badge}  ${MUTED}%s${RESET}\n" "$e" "$t" "$d"
   done
   printf "\n"
-  if [[ -f "$CC_CONFIG_FILE" ]]; then
+  if [[ -f "$CMT_CONFIG_FILE" ]]; then
     printf "  ${MUTED}custom types from .cmt.json included above${RESET}\n\n"
   else
     printf "  ${MUTED}run cmt init to configure custom types${RESET}\n\n"
@@ -814,16 +814,15 @@ cmd_types() {
 cmd_init() {
   git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
 
-  local git_root cc_path
+  local git_root cmt_path
   git_root=$(git rev-parse --show-toplevel)
-  cc_path=$(realpath "$0")
+  cmt_path=$(realpath "$0")
 
   # .cmt.json
-  if [[ ! -f "${git_root}/${CC_CONFIG_FILE}" ]]; then
-    cat > "${git_root}/${CC_CONFIG_FILE}" << JSONEOF
+  if [[ ! -f "${git_root}/${CMT_CONFIG_FILE}" ]]; then
+    cat > "${git_root}/${CMT_CONFIG_FILE}" << JSONEOF
 {
-  "\$schema": "${CC_SCHEMA_URL}",
-  "version": "${CC_VERSION}",
+  "\$schema": "${CMT_SCHEMA_URL}",
   "customTypes": [
     { "type": "wip", "emoji": "🚧", "semver": "none", "description": "Work in progress" }
   ],
@@ -848,15 +847,15 @@ JSONEOF
 
   if [[ $use_husky -eq 1 ]]; then
     mkdir -p "${git_root}/.husky"
-    _install_hook "${git_root}/.husky/prepare-commit-msg" 0 "$cc_path"
+    _install_hook "${git_root}/.husky/prepare-commit-msg" 0 "$cmt_path"
     if [[ $use_lint -eq 1 ]]; then
-      _install_hook "${git_root}/.husky/commit-msg" 0 "$cc_path" _lint_snippet
+      _install_hook "${git_root}/.husky/commit-msg" 0 "$cmt_path" _lint_snippet
     fi
     printf "  ${DIM}Commit .husky/ hooks to share with your team.${RESET}\n"
   else
-    _install_hook "${git_root}/.git/hooks/prepare-commit-msg" 1 "$cc_path"
+    _install_hook "${git_root}/.git/hooks/prepare-commit-msg" 1 "$cmt_path"
     if [[ $use_lint -eq 1 ]]; then
-      _install_hook "${git_root}/.git/hooks/commit-msg" 1 "$cc_path" _lint_snippet
+      _install_hook "${git_root}/.git/hooks/commit-msg" 1 "$cmt_path" _lint_snippet
     fi
   fi
 
@@ -911,8 +910,8 @@ cmd_uninstall() {
   done
 
   # remove .cmt.json config
-  if [[ -f "${git_root}/${CC_CONFIG_FILE}" ]]; then
-    rm "${git_root}/${CC_CONFIG_FILE}"
+  if [[ -f "${git_root}/${CMT_CONFIG_FILE}" ]]; then
+    rm "${git_root}/${CMT_CONFIG_FILE}"
     success "Removed .cmt.json"
     removed=1
   fi
@@ -924,13 +923,13 @@ cmd_uninstall() {
 
 # cmd: version
 cmd_version() {
-  printf "cmt version %s\n" "$CC_VERSION"
+  printf "cmt version %s\n" "$CMT_VERSION"
 }
 
 # cmd: help
 cmd_help() {
   printf "
-${BOLD}${CYAN}cmt${RESET} v${CC_VERSION} — Conventional Commits CLI
+${BOLD}${CYAN}cmt${RESET} v${CMT_VERSION} — Conventional Commits CLI
 
 ${BOLD}USAGE${RESET}
   cmt <command> [options]

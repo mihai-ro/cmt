@@ -13,53 +13,7 @@
         },
         {
           "type": "generic",
-          "path": "cmt",
-          "searchBy": "string",
-          "data": [
-            {
-              "before": "CC_VERSION=\"",
-              "after": "\""
-            }
-          ]
-        },
-        {
-          "type": "generic",
-          "path": "README.md",
-          "searchBy": "string",
-          "data": [
-            {
-              "before": "\"version\": \"",
-              "after": "\","
-            }
-          ]
-        },
-        {
-          "type": "json",
-          "path": ".cmt.example.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "generic",
-          "path": "schema/cmt.schema.json",
-          "searchBy": "string",
-          "data": [
-            {
-              "before": "Currently '",
-              "after": "'."
-            },
-            {
-              "before": "\"default\": \"",
-              "after": "\","
-            },
-            {
-              "before": "\"examples\": [\"",
-              "after": "\"]"
-            },
-            {
-              "before": "\"version\": \"",
-              "after": "\","
-            }
-          ]
+          "path": "cmt"
         }
       ]
     }

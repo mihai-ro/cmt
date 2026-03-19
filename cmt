@@ -559,9 +559,7 @@ cmd_commit() {
     git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
     if git diff --cached --quiet 2>/dev/null; then
       warn "No staged changes detected. Did you forget \`git add\`?"
-      printf "${DIM}Continue anyway? [y/N]:${RESET} " >/dev/tty
-      read -r cont </dev/tty
-      [[ "$cont" =~ ^[yY]$ ]] || exit 0
+      exit 0
     fi
   fi
 

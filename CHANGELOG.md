@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.4...@mihairo/cmt-v1.1.5) (2026-03-19)
+
+
+### Bug Fixes
+
+* exit 0 in hook snippets when cmt binary is not found ([#15](https://github.com/mihai-ro/cmt/issues/15)) ([cb508cd](https://github.com/mihai-ro/cmt/commit/cb508cdd883c3ff8a4dd6938889962620ff4a206))
+
 ## [1.1.4](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.3...@mihairo/cmt-v1.1.4) (2026-03-19)
 
 

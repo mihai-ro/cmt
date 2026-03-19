@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "customTypes": [
     {
       "type": "wip",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.2...@mihairo/cmt-v1.1.3) (2026-03-19)
+
+
+### Bug Fixes
+
+* exit early when no staged changes instead of prompting to continue ([#11](https://github.com/mihai-ro/cmt/issues/11)) ([cd707e0](https://github.com/mihai-ro/cmt/commit/cd707e0d9ec6bf67342aac14e0dcdd13a07443de))
+
 ## [1.1.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.1...@mihairo/cmt-v1.1.2) (2026-03-18)
 
 

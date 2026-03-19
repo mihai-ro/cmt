@@ -708,6 +708,7 @@ _hook_snippet() {
 for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
   [ -x "\$_p" ] && { "\$_p" commit --write-only > "\$1"; exit 0; }
 done
+exit 0
 # <<< cmt
 SNIPPET
 }
@@ -720,6 +721,7 @@ _lint_snippet() {
 for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
   [ -x "\$_p" ] && { "\$_p" lint "\$1"; exit \$?; }
 done
+exit 0
 # <<< cmt-lint
 SNIPPET
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.3...@mihairo/cmt-v1.1.4) (2026-03-19)
+
+
+### Bug Fixes
+
+* correct release-please config and remove version field from user config ([#13](https://github.com/mihai-ro/cmt/issues/13)) ([ba5294c](https://github.com/mihai-ro/cmt/commit/ba5294cde7e837b2e3a955a97d54ab21288b528d))
+
 ## [1.1.3](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.2...@mihairo/cmt-v1.1.3) (2026-03-19)
 
 

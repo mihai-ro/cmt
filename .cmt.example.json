@@ -1,6 +1,5 @@
 {
   "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
-  "version": "1.1.3",
   "customTypes": [
     {
       "type": "wip",
@@ -15,19 +14,11 @@
       "description": "Security fix"
     }
   ],
-  "scopes": [
-    "auth",
-    "api",
-    "ui",
-    "db"
-  ],
+  "scopes": ["auth", "api", "ui", "db"],
   "rules": {
     "maxHeaderLength": 72,
     "requireScope": false,
-    "allowBreakingChanges": [
-      "feat",
-      "fix"
-    ],
+    "allowBreakingChanges": ["feat", "fix"],
     "disallowUpperCaseDescription": false,
     "disallowTrailingPeriod": false
   }

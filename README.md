@@ -124,7 +124,6 @@ validate it automatically — no extension needed.
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
-  "version": "1.1.0",
   "customTypes": [
     {
       "type": "wip",

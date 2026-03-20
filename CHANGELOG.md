@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.6...@mihairo/cmt-v1.2.0) (2026-03-20)
+
+
+### Features
+
+* trigger homebrew-tap bump on release ([3d8c730](https://github.com/mihai-ro/cmt/commit/3d8c730290bd3a177ded1900688cac55c6d16b00))
+
 ## [1.1.6](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.5...@mihairo/cmt-v1.1.6) (2026-03-20)
 
 

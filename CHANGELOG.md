@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.5...@mihairo/cmt-v1.1.6) (2026-03-20)
+
+
+### Bug Fixes
+
+* use relative node_modules path in git hook snippets ([#17](https://github.com/mihai-ro/cmt/issues/17)) ([476499a](https://github.com/mihai-ro/cmt/commit/476499aa6f91826dbe07a254ed3571c26a06cda1))
+
 ## [1.1.5](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.4...@mihairo/cmt-v1.1.5) (2026-03-19)
 
 

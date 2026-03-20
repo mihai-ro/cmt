@@ -28,3 +28,14 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Trigger homebrew-tap bump
+        if: github.event_name == 'release'
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#@mihairo/cmt-v}"
+          curl -fsSL -X POST \
+            -H "Authorization: token ${{ secrets.HOMEBREW_TAP_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/mihai-ro/homebrew-tap/dispatches \
+            -d "{\"event_type\":\"bump-cmt\",\"client_payload\":{\"version\":\"${VERSION}\"}}"

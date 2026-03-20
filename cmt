@@ -699,14 +699,11 @@ lint_message() {
 # It intercepts plain `git commit`, runs the picker, writes the message.
 # commit-msg is not needed — the message is already conventional when we write it.
 _hook_snippet() {
-  local _cmt_path="$1"
-  # variables prefixed with \ are meant for the hook at runtime (not expanded now).
-  # _cmt_path IS expanded now; it records the install-time absolute path.
-  cat << SNIPPET
+  cat << 'SNIPPET'
 # >>> cmt — Conventional Commits CLI
-[ -n "\${2:-}" ] && exit 0
-for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
-  [ -x "\$_p" ] && { "\$_p" commit --write-only > "\$1"; exit 0; }
+[ -n "${2:-}" ] && exit 0
+for _p in "./node_modules/.bin/cmt" "$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
+  [ -x "$_p" ] && { "$_p" commit --write-only > "$1"; exit 0; }
 done
 exit 0
 # <<< cmt
@@ -715,11 +712,10 @@ SNIPPET
 
 # lint snippet (commit-msg hook)
 _lint_snippet() {
-  local _cmt_path="$1"
-  cat << SNIPPET
+  cat << 'SNIPPET'
 # >>> cmt-lint — Conventional Commits CLI
-for _p in "${_cmt_path}" "\$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
-  [ -x "\$_p" ] && { "\$_p" lint "\$1"; exit \$?; }
+for _p in "./node_modules/.bin/cmt" "$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
+  [ -x "$_p" ] && { "$_p" lint "$1"; exit $?; }
 done
 exit 0
 # <<< cmt-lint
@@ -727,25 +723,25 @@ SNIPPET
 }
 
 # install or append cmt block to a hook file
-# usage: _install_hook <path> <needs_shebang> <cmt_path> [snippet_fn]
+# usage: _install_hook <path> <needs_shebang> [snippet_fn]
 _install_hook() {
-  local path="$1" shebang="${2:-1}" cmt_path="$3" snippet_fn="${4:-_hook_snippet}"
+  local path="$1" shebang="${2:-1}" snippet_fn="${3:-_hook_snippet}"
   local marker; [[ "$snippet_fn" == "_lint_snippet" ]] && marker="cmt-lint" || marker="cmt"
 
   if [[ -f "$path" ]]; then
     if grep -q ">>> ${marker}" "$path" 2>/dev/null; then
       local tmp; tmp=$(mktemp)
       awk "/# >>> ${marker}/{skip=1} !skip{print} /# <<< ${marker}/{skip=0}" "$path" > "$tmp"
-      "$snippet_fn" "$cmt_path" >> "$tmp"
+      "$snippet_fn" >> "$tmp"
       mv "$tmp" "$path"
       success "Updated ${marker} block in $(basename "$(dirname "$path")")/$(basename "$path")"
     else
-      "$snippet_fn" "$cmt_path" >> "$path"
+      "$snippet_fn" >> "$path"
       success "Appended to $(basename "$(dirname "$path")")/$(basename "$path")"
     fi
   else
     [[ "$shebang" == "1" ]] && printf '#!/usr/bin/env bash\n' > "$path"
-    "$snippet_fn" "$cmt_path" >> "$path"
+    "$snippet_fn" >> "$path"
     chmod +x "$path"
     success "Created $(basename "$(dirname "$path")")/$(basename "$path")"
   fi
@@ -816,9 +812,8 @@ cmd_types() {
 cmd_init() {
   git rev-parse --git-dir > /dev/null 2>&1 || die "Not inside a git repository"
 
-  local git_root cmt_path
+  local git_root
   git_root=$(git rev-parse --show-toplevel)
-  cmt_path=$(realpath "$0")
 
   # .cmt.json
   if [[ ! -f "${git_root}/${CMT_CONFIG_FILE}" ]]; then
@@ -849,15 +844,15 @@ JSONEOF
 
   if [[ $use_husky -eq 1 ]]; then
     mkdir -p "${git_root}/.husky"
-    _install_hook "${git_root}/.husky/prepare-commit-msg" 0 "$cmt_path"
+    _install_hook "${git_root}/.husky/prepare-commit-msg" 0
     if [[ $use_lint -eq 1 ]]; then
-      _install_hook "${git_root}/.husky/commit-msg" 0 "$cmt_path" _lint_snippet
+      _install_hook "${git_root}/.husky/commit-msg" 0 _lint_snippet
     fi
     printf "  ${DIM}Commit .husky/ hooks to share with your team.${RESET}\n"
   else
-    _install_hook "${git_root}/.git/hooks/prepare-commit-msg" 1 "$cmt_path"
+    _install_hook "${git_root}/.git/hooks/prepare-commit-msg" 1
     if [[ $use_lint -eq 1 ]]; then
-      _install_hook "${git_root}/.git/hooks/commit-msg" 1 "$cmt_path" _lint_snippet
+      _install_hook "${git_root}/.git/hooks/commit-msg" 1 _lint_snippet
     fi
   fi
 

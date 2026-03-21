@@ -1,4 +1,6 @@
-# cmt
+<p align="center">
+  <img src="logo.png" alt="cmt" width="720" />
+</p>
 
 > Conventional Commits CLI — zero dependencies, one bash script.
 

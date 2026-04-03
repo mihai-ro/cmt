@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.2.0...@mihairo/cmt-v1.3.0) (2026-04-03)
+
+
+### Features
+
+* add _has_color_tty() for terminal detection, remove unused code ([4aa19b1](https://github.com/mihai-ro/cmt/commit/4aa19b1e4d8ec3e78931b8b2bbbfe561eba76f20))
+
 ## [1.2.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.1.6...@mihairo/cmt-v1.2.0) (2026-03-20)
 
 

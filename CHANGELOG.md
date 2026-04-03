@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.0...@mihairo/cmt-v1.3.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* separate homebrew bump from npm publish ([1737915](https://github.com/mihai-ro/cmt/commit/17379151209715741f7dc625398cdabe253e6c34))
+
 ## [1.3.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.2.0...@mihairo/cmt-v1.3.0) (2026-04-03)
 
 

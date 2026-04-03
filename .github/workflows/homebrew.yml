@@ -1,0 +1,24 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Bump Homebrew tap
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger homebrew-tap bump
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#@mihairo/cmt-v}"
+          sleep 30  # give npm time to fully process the package
+          curl -fsSL -X POST \
+            -H "Authorization: token ${{ secrets.HOMEBREW_TAP_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/mihai-ro/homebrew-tap/dispatches \
+            -d "{\"event_type\":\"bump-cmt\",\"client_payload\":{\"version\":\"${VERSION}\"}}"

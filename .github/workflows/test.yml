@@ -1,0 +1,32 @@
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: bash test/run_tests.sh
+
+      - name: shellcheck
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            if [[ "$RUNNER_OS" == "Linux" ]]; then
+              sudo apt-get install -y shellcheck
+            else
+              brew install shellcheck
+            fi
+          fi
+          shellcheck -x cmt
+
+      - name: Self-lint
+        run: echo "chore: ci self-lint check" | bash cmt lint

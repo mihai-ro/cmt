@@ -2,7 +2,7 @@
   <img src="logo.png" alt="cmt" width="720" />
 </p>
 
-> Conventional Commits CLI — zero dependencies, one bash script.
+> Conventional Commits CLI — zero dependencies, 1300 lines of bash.
 
 [![npm](https://img.shields.io/npm/v/@mihairo/cmt?label=npm)](https://npmjs.com/package/@mihairo/cmt)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196?logo=conventionalcommits)](https://conventionalcommits.org)

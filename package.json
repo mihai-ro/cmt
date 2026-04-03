@@ -1,7 +1,7 @@
 {
   "name": "@mihairo/cmt",
   "version": "1.2.0",
-  "description": "Zero-dependency conventional commits CLI — interactive picker, linter, and git hook installer. One bash script, works in any repo.",
+  "description": "Zero-dependency commit messages that actually follow the spec. One 1300-line bash script.",
   "keywords": [
     "conventional-commits",
     "commit",

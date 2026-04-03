@@ -1,6 +1,6 @@
 {
   "name": "@mihairo/cmt",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Zero-dependency commit messages that actually follow the spec. One 1300-line bash script.",
   "keywords": [
     "conventional-commits",

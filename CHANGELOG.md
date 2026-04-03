@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.1...@mihairo/cmt-v1.3.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* add debug output for homebrew bump failure ([f5af1ad](https://github.com/mihai-ro/cmt/commit/f5af1ad8b033c5144c405cac3b505180b636afd2))
+
 ## [1.3.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.0...@mihairo/cmt-v1.3.1) (2026-04-03)
 
 

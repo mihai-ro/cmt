@@ -333,8 +333,11 @@ _pick() {
   }
 
   # draw the visible window of _view items starting at _top
+  # sets _lines_drawn to the number of lines printed
+  _lines_drawn=0
   _draw() {
     local _i _end _vi
+    _lines_drawn=0
 
     # search line
     if [[ -n "$_filter" ]]; then
@@ -342,6 +345,7 @@ _pick() {
     else
       printf "  ${MUTED}/ type to filter${RESET}\033[K\n" >&9
     fi
+    (( _lines_drawn++ ))
 
     _end=$(( _top + _view ))
     [[ $_end -gt _nv ]] && _end=$_nv
@@ -349,10 +353,12 @@ _pick() {
     # scroll hint above
     if [[ $_top -gt 0 ]]; then
       printf "  ${MUTED}↑ %d more${RESET}\033[K\n" "$_top" >&9
+      (( _lines_drawn++ ))
     fi
 
     if [[ $_nv -eq 0 ]]; then
       printf "  ${MUTED}no matches${RESET}\033[K\n" >&9
+      (( _lines_drawn++ ))
     else
       for (( _i=_top; _i<_end; _i++ )); do
         _vi=${_visible[$_i]}
@@ -361,6 +367,7 @@ _pick() {
         else
           printf "  ${MUTED}·${RESET} ${MUTED}%s${RESET}\033[K\n" "${_items[$_vi]}" >&9
         fi
+        (( _lines_drawn++ ))
       done
     fi
 
@@ -371,13 +378,13 @@ _pick() {
     else
       printf "\033[K\n" >&9
     fi
+    (( _lines_drawn++ ))
   }
 
   _rebuild_visible
 
   printf "\033[?25l" >&9
   printf "\n  ${ACCENT_BOLD}%s${RESET}\n\n" "$_prompt" >&9
-  printf "\033[s" >&9
   _draw
 
   while true; do
@@ -414,7 +421,7 @@ _pick() {
         # any other printable char goes into the search filter
         _filter+="$_k1"; _rebuild_visible ;;
     esac
-    printf "\033[u\033[J" >&9
+    printf "\033[%dA" "$_lines_drawn" >&9
     _draw
   done
 
@@ -425,7 +432,7 @@ _pick() {
   local _selected_orig=${_visible[$_cur]}
 
   # collapse to just the selected line
-  printf "\033[u\033[J" >&9
+  printf "\033[%dA\033[J" "$_lines_drawn" >&9
   printf "  ${ACCENT_BOLD}❯${RESET} ${BOLD}%s${RESET}\n" "${_items[$_selected_orig]}" >&9
 
   stty "$_old" <&9 2>/dev/null

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.1...@mihairo/cmt-v1.3.2) (2026-04-06)
+
+
+### Bug Fixes
+
+* replace save/restore cursor with relative cursor movement for macOS Terminal.app compatibility ([6e9e1ef](https://github.com/mihai-ro/cmt/commit/6e9e1ef0e9246e4567fe50413d54618df923b9fc))
+
 ## [1.3.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.0...@mihairo/cmt-v1.3.1) (2026-04-03)
 
 

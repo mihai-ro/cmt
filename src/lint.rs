@@ -9,11 +9,7 @@ pub struct LintResult {
 
 impl LintResult {
     pub fn exit_code(&self) -> i32 {
-        if self.errors.is_empty() {
-            0
-        } else {
-            1
-        }
+        if self.errors.is_empty() { 0 } else { 1 }
     }
 }
 

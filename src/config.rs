@@ -1,4 +1,4 @@
-use crate::types::{builtin_types, CommitType, Config, Rules};
+use crate::types::{CommitType, Config, Rules, builtin_types};
 use serde::Deserialize;
 use std::path::Path;
 

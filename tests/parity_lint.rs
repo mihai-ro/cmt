@@ -4,7 +4,8 @@ use std::path::Path;
 #[test]
 fn lint_fixtures_match() {
     // Fixtures were captured with NO_COLOR=1.
-    std::env::set_var("NO_COLOR", "1");
+    // SAFETY: single-threaded test binary, no other threads read env.
+    unsafe { std::env::set_var("NO_COLOR", "1") };
     let dir = Path::new("tests/fixtures/lint");
     let mut names: Vec<String> = fs::read_dir(dir)
         .unwrap()

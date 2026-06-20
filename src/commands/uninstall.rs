@@ -15,15 +15,15 @@ pub fn run(_args: &[String]) {
     let mut removed = false;
 
     for dir in [root.join(".git").join("hooks"), root.join(".husky")] {
-        if let Ok(o) = hooks::remove_block(&dir.join("prepare-commit-msg"), "cmt") {
-            if o != hooks::Outcome::NoOp {
-                removed = true;
-            }
+        if let Ok(o) = hooks::remove_block(&dir.join("prepare-commit-msg"), "cmt")
+            && o != hooks::Outcome::NoOp
+        {
+            removed = true;
         }
-        if let Ok(o) = hooks::remove_block(&dir.join("commit-msg"), "cmt-lint") {
-            if o != hooks::Outcome::NoOp {
-                removed = true;
-            }
+        if let Ok(o) = hooks::remove_block(&dir.join("commit-msg"), "cmt-lint")
+            && o != hooks::Outcome::NoOp
+        {
+            removed = true;
         }
     }
 
@@ -32,13 +32,12 @@ pub fn run(_args: &[String]) {
         root.join(".git").join("hooks").join("commit-msg"),
         root.join(".husky").join("commit-msg"),
     ] {
-        if path.exists() {
-            if let Ok(c) = std::fs::read_to_string(&path) {
-                if c.contains("Installed by cmt") {
-                    let _ = std::fs::remove_file(&path);
-                    removed = true;
-                }
-            }
+        if path.exists()
+            && let Ok(c) = std::fs::read_to_string(&path)
+            && c.contains("Installed by cmt")
+        {
+            let _ = std::fs::remove_file(&path);
+            removed = true;
         }
     }
 

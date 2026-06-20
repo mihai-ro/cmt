@@ -1,7 +1,7 @@
 [package]
 name = "cmt"
 version = "2.0.0"
-edition = "2021"
+edition = "2024"
 description = "Conventional Commits CLI — a single native binary, zero runtime deps."
 license = "MIT"
 repository = "https://github.com/mihai-ro/cmt"

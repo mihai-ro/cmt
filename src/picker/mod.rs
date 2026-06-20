@@ -1,6 +1,6 @@
 pub mod state;
 
-use crate::ui::{palette, Palette};
+use crate::ui::{Palette, palette};
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},

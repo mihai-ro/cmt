@@ -1,4 +1,4 @@
-use cmt::commit::{assemble, Draft};
+use cmt::commit::{Draft, assemble};
 use std::fs;
 use std::path::Path;
 

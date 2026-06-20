@@ -23,7 +23,9 @@ fn lint_fixtures_match() {
     let p = cmt::ui::Palette::plain();
     for name in names {
         let msg = fs::read_to_string(dir.join(format!("{name}.msg"))).unwrap();
-        let expected_out = fs::read_to_string(dir.join(format!("{name}.out"))).unwrap();
+        let expected_out = fs::read_to_string(dir.join(format!("{name}.out")))
+            .unwrap()
+            .replace("\r\n", "\n");
         let expected_code: i32 = fs::read_to_string(dir.join(format!("{name}.code")))
             .unwrap()
             .trim()

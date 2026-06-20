@@ -41,7 +41,9 @@ fn assemble_fixtures_match() {
     assert!(!ins.is_empty());
     for input in ins {
         let d = parse_in(&input);
-        let expected = fs::read_to_string(input.with_extension("out")).unwrap();
+        let expected = fs::read_to_string(input.with_extension("out"))
+            .unwrap()
+            .replace("\r\n", "\n");
         assert_eq!(assemble(&d), expected, "mismatch for {:?}", input);
     }
 }

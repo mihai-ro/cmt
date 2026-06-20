@@ -14,7 +14,7 @@ fn config_fixtures_resolve_canonically() {
     assert!(!entries.is_empty(), "no config fixtures found");
     for json in entries {
         let resolved = json.with_extension("resolved");
-        let expected = fs::read_to_string(&resolved).unwrap();
+        let expected = fs::read_to_string(&resolved).unwrap().replace("\r\n", "\n");
         let cfg = cmt::config::load_from(&json);
         let got = cmt::config::dump_canonical(&cfg);
         assert_eq!(got, expected, "mismatch for {:?}", json);

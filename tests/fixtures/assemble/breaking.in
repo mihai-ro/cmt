@@ -1,0 +1,7 @@
+type=feat
+scope=api
+desc=new shape
+breaking=1
+breaking_desc=drops old
+footer=Closes #9
+body=context

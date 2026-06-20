@@ -1,0 +1,30 @@
+[package]
+name = "cmt"
+version = "2.0.0"
+edition = "2021"
+description = "Conventional Commits CLI — a single native binary, zero runtime deps."
+license = "MIT"
+repository = "https://github.com/mihai-ro/cmt"
+homepage = "https://github.com/mihai-ro/cmt"
+keywords = ["conventional-commits", "commit", "git", "lint", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "cmt"
+path = "src/main.rs"
+
+[lib]
+name = "cmt"
+path = "src/lib.rs"
+
+[dependencies]
+crossterm = "0.28"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

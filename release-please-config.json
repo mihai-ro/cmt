@@ -1,8 +1,8 @@
 {
-  "release-type": "simple",
+  "release-type": "rust",
   "packages": {
     ".": {
-      "release-type": "simple",
+      "release-type": "rust",
       "package-name": "@mihairo/cmt",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
@@ -10,10 +10,6 @@
           "type": "json",
           "path": "package.json",
           "jsonpath": "$.version"
-        },
-        {
-          "type": "generic",
-          "path": "cmt"
         }
       ]
     }

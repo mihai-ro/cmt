@@ -2,7 +2,7 @@
   <img src="logo.png" alt="cmt" width="720" />
 </p>
 
-> Conventional Commits CLI — zero dependencies, 1300 lines of bash.
+> Conventional Commits CLI — a single native binary. Linux, macOS, Windows.
 
 [![npm](https://img.shields.io/npm/v/@mihairo/cmt?label=npm)](https://npmjs.com/package/@mihairo/cmt)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196?logo=conventionalcommits)](https://conventionalcommits.org)
@@ -12,7 +12,19 @@
 
 ## Install
 
-**npm (any project — no Node required at runtime)**
+**curl (Linux / macOS)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mihai-ro/cmt/main/install.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/mihai-ro/cmt/main/install.ps1 | iex
+```
+
+**npm (any platform — no Node at runtime)**
 
 ```bash
 npm install -g @mihairo/cmt
@@ -23,13 +35,6 @@ npm install -g @mihairo/cmt
 ```bash
 brew tap mihairo/tap
 brew install cmt
-```
-
-**curl (no package manager)**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mihai-ro/cmt/main/cmt \
-  -o ~/.local/bin/cmt && chmod +x ~/.local/bin/cmt
 ```
 
 ---

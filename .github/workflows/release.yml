@@ -1,0 +1,99 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu,  ext: "" }
+          - { os: ubuntu-latest,  target: aarch64-unknown-linux-gnu, ext: "" }
+          - { os: macos-latest,   target: x86_64-apple-darwin,       ext: "" }
+          - { os: macos-latest,   target: aarch64-apple-darwin,      ext: "" }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc,    ext: ".exe" }
+          - { os: windows-latest, target: aarch64-pc-windows-msvc,   ext: ".exe" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install cross linker (linux arm64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Stage artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/cmt${{ matrix.ext }}" "dist/cmt-${{ matrix.target }}${{ matrix.ext }}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/cmt-${{ matrix.target }}${{ matrix.ext }}
+
+  checksum:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --dir dist
+      - name: Generate checksums.json
+        run: |
+          python3 -c "
+          import hashlib, json, os
+          out = {}
+          for f in sorted(os.listdir('dist')):
+              with open(os.path.join('dist', f), 'rb') as fh:
+                  out[f] = hashlib.sha256(fh.read()).hexdigest()
+          with open('dist/checksums.json', 'w') as f:
+              json.dump(out, f, indent=2)
+          "
+      - name: Upload checksums.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            dist/checksums.json
+
+  publish-npm:
+    needs: checksum
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@mihairo/cmt
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Download checksums.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "checksums.json" \
+            --dir npm/
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

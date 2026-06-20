@@ -1,0 +1,6 @@
+
+  lint  feat: this is an extremely long commit header that goes well beyond the seventy two character soft limit
+  ⚑  Header is 104 chars — aim for ≤72
+
+  ✔ valid — with 1 suggestion(s)
+

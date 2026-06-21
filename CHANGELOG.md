@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.2...@mihairo/cmt-v2.0.0) (2026-06-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* rewrite cmt as a native Rust binary ([#24](https://github.com/mihai-ro/cmt/issues/24))
+
+### Features
+
+* rewrite cmt as a native Rust binary ([#24](https://github.com/mihai-ro/cmt/issues/24)) ([f0c9003](https://github.com/mihai-ro/cmt/commit/f0c9003f4eb7b68c612d68e91e0f60dced34f9b4))
+
 ## [1.3.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.1...@mihairo/cmt-v1.3.2) (2026-04-06)
 
 

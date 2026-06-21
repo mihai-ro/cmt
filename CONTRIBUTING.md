@@ -1,4 +1,35 @@
-# Local development & testing
+# Contributing
+
+## Development (v2 — Rust)
+
+cmt v2 is a native Rust binary. You need the stable Rust toolchain:
+
+```bash
+brew install rust   # or: curl https://sh.rustup.rs | sh
+```
+
+**Build:**
+```bash
+cargo build           # dev build
+cargo build --release # release build (optimized, ~1 MB)
+```
+
+**Test:**
+```bash
+cargo test            # all tests (unit + parity fixtures)
+```
+
+**Lint:**
+```bash
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+```
+
+**Parity fixtures** in `tests/fixtures/` are captured snapshots of the original bash output. Any intentional behavior change requires a deliberate fixture update in a reviewed commit.
+
+---
+
+# Local development & testing (legacy reference)
 
 ## 1. Clone and make it available
 

@@ -115,7 +115,7 @@
 
   "examples": [
     {
-      "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cc.schema.json",
+      "$schema": "https://raw.githubusercontent.com/mihai-ro/cmt/main/schema/cmt.schema.json",
       "customTypes": [
         {
           "type": "wip",

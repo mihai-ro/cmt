@@ -1,0 +1,7 @@
+maxHeaderLength=50
+requireScope=true
+disallowUpperCaseDescription=false
+disallowTrailingPeriod=true
+allowBreakingChanges=feat
+scopes=auth,api
+types=feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,wip

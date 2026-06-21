@@ -1,0 +1,7 @@
+feat(api)!: new shape
+
+context
+
+BREAKING CHANGE: drops old
+
+Closes #9

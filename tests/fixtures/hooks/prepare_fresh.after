@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# >>> cmt — Conventional Commits CLI
+[ -n "${2:-}" ] && exit 0
+_cmt_bin=""
+for _p in "./node_modules/.bin/cmt" "$HOME/.local/bin/cmt" "/usr/local/bin/cmt" "/opt/homebrew/bin/cmt"; do
+  [ -x "$_p" ] && { _cmt_bin="$_p"; break; }
+done
+[ -z "$_cmt_bin" ] && _cmt_bin=$(command -v cmt 2>/dev/null)
+[ -n "$_cmt_bin" ] && { "$_cmt_bin" commit --write-only > "$1"; exit 0; }
+exit 0
+# <<< cmt

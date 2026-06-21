@@ -1,0 +1,7 @@
+type=fix
+scope=auth
+desc=null token
+breaking=0
+breaking_desc=
+footer=
+body=

@@ -1,0 +1,12 @@
+{
+  "customTypes": [
+    { "type": "wip", "emoji": "🚧", "semver": "none", "description": "Work in progress" }
+  ],
+  "scopes": ["auth", "api"],
+  "rules": {
+    "maxHeaderLength": 50,
+    "requireScope": true,
+    "disallowTrailingPeriod": true,
+    "allowBreakingChanges": ["feat"]
+  }
+}

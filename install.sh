@@ -1,29 +1,30 @@
-#!/usr/bin/env bash
-# install cmt — Conventional Commits CLI
-set -euo pipefail
+#!/usr/bin/env sh
+# Install the latest cmt release binary into ~/.local/bin.
+set -eu
+REPO="mihai-ro/cmt"
+BIN_DIR="${CMT_BIN_DIR:-$HOME/.local/bin}"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC="${SCRIPT_DIR}/cmt"
+os="$(uname -s)"
+arch="$(uname -m)"
+case "$os" in
+  Linux)  plat="unknown-linux-gnu" ;;
+  Darwin) plat="apple-darwin" ;;
+  *) echo "Unsupported OS: $os" >&2; exit 1 ;;
+esac
+case "$arch" in
+  x86_64|amd64) cpu="x86_64" ;;
+  arm64|aarch64) cpu="aarch64" ;;
+  *) echo "Unsupported arch: $arch" >&2; exit 1 ;;
+esac
 
-[[ -f "$SRC" ]] || { echo "✖  cmt not found"; exit 1; }
-
-# pick install location: prefer /usr/local/bin if writable, else ~/.local/bin
-if [[ -z "${INSTALL_DIR:-}" ]]; then
-  if [[ -w "/usr/local/bin" ]]; then
-    INSTALL_DIR="/usr/local/bin"
-  else
-    INSTALL_DIR="${HOME}/.local/bin"
-    mkdir -p "$INSTALL_DIR"
-  fi
-fi
-
-install -m 755 "$SRC" "${INSTALL_DIR}/cmt"
-printf "✔ Installed cmt → ${INSTALL_DIR}/cmt\n"
-
-if ! echo ":${PATH}:" | grep -q ":${INSTALL_DIR}:"; then
-  printf "\n⚠  ${INSTALL_DIR} is not in your PATH. Add it for your shell:\n\n"
-  printf "   bash/zsh  →  echo 'export PATH=\"%s:\$PATH\"' >> ~/.bashrc\n" "${INSTALL_DIR}"
-  printf "   fish      →  fish_add_path %s\n\n" "${INSTALL_DIR}"
-fi
-
-printf "\n  cmt init       # set up a repo\n  cmt help       # all commands\n\n"
+target="${cpu}-${plat}"
+url="https://github.com/${REPO}/releases/latest/download/cmt-${target}"
+mkdir -p "$BIN_DIR"
+echo "Downloading cmt ($target)..."
+curl -fsSL "$url" -o "$BIN_DIR/cmt"
+chmod +x "$BIN_DIR/cmt"
+echo "Installed to $BIN_DIR/cmt"
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) echo "Add $BIN_DIR to your PATH." ;;
+esac

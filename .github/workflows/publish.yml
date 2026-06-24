@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v2.0.0)"
+        description: "Release tag to publish (e.g. @mihairo/cmt-v2.0.0)"
         required: true
 
 permissions:

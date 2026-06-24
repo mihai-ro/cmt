@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.0...@mihairo/cmt-v2.0.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* align release workflows with release-please tag format ([#26](https://github.com/mihai-ro/cmt/issues/26)) ([48cba7c](https://github.com/mihai-ro/cmt/commit/48cba7ccdee7db84f9c3456045e5b7ac8fa0d6b1))
+
 ## [2.0.0](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v1.3.2...@mihairo/cmt-v2.0.0) (2026-06-21)
 
 

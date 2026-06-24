@@ -1,9 +1,16 @@
 name: Release
 on:
   push:
-    tags: ["v*"]
+    tags: ["@mihairo/cmt-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish (e.g. @mihairo/cmt-v2.0.0)"
+        required: true
 permissions:
   contents: write
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 jobs:
   build:
     strategy:
@@ -19,6 +26,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -36,6 +45,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/cmt${{ matrix.ext }}" "dist/cmt-${{ matrix.target }}${{ matrix.ext }}"
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: dist/cmt-${{ matrix.target }}${{ matrix.ext }}
 
   checksum:
@@ -48,7 +58,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "${{ github.ref_name }}" \
+          gh release download "${{ env.RELEASE_TAG }}" \
             --repo "${{ github.repository }}" \
             --dir dist
       - name: Generate checksums.json
@@ -66,7 +76,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.ref_name }}" \
+          gh release upload "${{ env.RELEASE_TAG }}" \
             --repo "${{ github.repository }}" \
             dist/checksums.json
 
@@ -81,6 +91,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -89,7 +101,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "${{ github.ref_name }}" \
+          gh release download "${{ env.RELEASE_TAG }}" \
             --repo "${{ github.repository }}" \
             --pattern "checksums.json" \
             --dir npm/

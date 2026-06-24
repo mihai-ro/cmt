@@ -74,7 +74,7 @@ async function main() {
   const ext = process.platform === "win32" ? ".exe" : "";
   const assetName = `cmt-${t}${ext}`;
   const ver = require("./../package.json").version;
-  const url = `https://github.com/mihai-ro/cmt/releases/download/v${ver}/${assetName}`;
+  const url = `https://github.com/mihai-ro/cmt/releases/download/@mihairo/cmt-v${ver}/${assetName}`;
   const dest = path.join(__dirname, "bin", binName());
 
   let checksums;

@@ -80,6 +80,99 @@ jobs:
             --repo "${{ github.repository }}" \
             dist/checksums.json
 
+  update-homebrew-formula:
+    needs: checksum
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          VERSION="${TAG##*-v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download checksums.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ env.RELEASE_TAG }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "checksums.json" \
+            --output checksums.json
+
+      - name: Update formula
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os
+
+          version = os.environ["VERSION"]
+          base_url = f"https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v{version}"
+
+          with open("checksums.json") as f:
+              checksums = json.load(f)
+
+          formula = (
+              'class Cmt < Formula\n'
+              '  desc "Conventional Commits CLI — a single native binary"\n'
+              '  homepage "https://github.com/mihai-ro/cmt"\n'
+              f'  version "{version}"\n'
+              '  license "MIT"\n'
+              '\n'
+              '  on_macos do\n'
+              '    on_arm do\n'
+              f'      url "{base_url}/cmt-aarch64-apple-darwin"\n'
+              f'      sha256 "{checksums["cmt-aarch64-apple-darwin"]}"\n'
+              '    end\n'
+              '    on_intel do\n'
+              f'      url "{base_url}/cmt-x86_64-apple-darwin"\n'
+              f'      sha256 "{checksums["cmt-x86_64-apple-darwin"]}"\n'
+              '    end\n'
+              '  end\n'
+              '\n'
+              '  on_linux do\n'
+              '    on_arm do\n'
+              f'      url "{base_url}/cmt-aarch64-unknown-linux-gnu"\n'
+              f'      sha256 "{checksums["cmt-aarch64-unknown-linux-gnu"]}"\n'
+              '    end\n'
+              '    on_intel do\n'
+              f'      url "{base_url}/cmt-x86_64-unknown-linux-gnu"\n'
+              f'      sha256 "{checksums["cmt-x86_64-unknown-linux-gnu"]}"\n'
+              '    end\n'
+              '  end\n'
+              '\n'
+              '  def install\n'
+              '    bin.install Dir["cmt-*"].first => "cmt"\n'
+              '  end\n'
+              '\n'
+              '  test do\n'
+              '    assert_match "cmt version #{version}", shell_output("#{bin}/cmt --version")\n'
+              '    assert_match "feat", shell_output("#{bin}/cmt types")\n'
+              '    pipe_output("#{bin}/cmt lint", "feat: add login\\n", 0)\n'
+              '    pipe_output("#{bin}/cmt lint", "bad message\\n", 1)\n'
+              '  end\n'
+              'end\n'
+          )
+
+          with open("HomebrewFormula/cmt.rb", "w") as f:
+              f.write(formula)
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add HomebrewFormula/cmt.rb
+          git commit -m "chore: update Homebrew formula to v${{ steps.version.outputs.version }}"
+          git push
+
   publish-npm:
     needs: checksum
     runs-on: ubuntu-latest

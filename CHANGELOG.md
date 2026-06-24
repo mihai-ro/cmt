@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.1...@mihairo/cmt-v2.0.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* correct download URL to use scoped package tag format ([#28](https://github.com/mihai-ro/cmt/issues/28)) ([983397b](https://github.com/mihai-ro/cmt/commit/983397bad1aeb9b3ad71df9ba587c8e4ce592645))
+
 ## [2.0.1](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.0...@mihairo/cmt-v2.0.1) (2026-06-24)
 
 

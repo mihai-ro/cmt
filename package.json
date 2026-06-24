@@ -2,12 +2,37 @@
   "name": "@mihairo/cmt",
   "version": "2.0.0",
   "description": "Conventional Commits CLI — a single native binary, zero runtime deps.",
-  "keywords": ["conventional-commits", "commit", "git", "lint", "cli", "hook", "commitlint", "husky"],
+  "keywords": [
+    "conventional-commits",
+    "commit",
+    "git",
+    "lint",
+    "cli",
+    "hook",
+    "commitlint",
+    "husky"
+  ],
   "homepage": "https://github.com/mihai-ro/cmt",
-  "bugs": { "url": "https://github.com/mihai-ro/cmt/issues" },
-  "repository": { "type": "git", "url": "git+https://github.com/mihai-ro/cmt.git" },
+  "bugs": {
+    "url": "https://github.com/mihai-ro/cmt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mihai-ro/cmt.git"
+  },
   "license": "MIT",
-  "bin": { "cmt": "npm/bin/cmt.js" },
-  "scripts": { "postinstall": "node npm/postinstall.js" },
-  "files": ["npm/bin/cmt.js", "npm/postinstall.js", "npm/checksums.json", "schema/cmt.schema.json", "README.md", "LICENSE"]
+  "bin": {
+    "cmt": "npm/bin/cmt.js"
+  },
+  "scripts": {
+    "postinstall": "node npm/postinstall.js"
+  },
+  "files": [
+    "npm/bin/cmt.js",
+    "npm/postinstall.js",
+    "npm/checksums.json",
+    "schema/cmt.schema.json",
+    "README.md",
+    "LICENSE"
+  ]
 }

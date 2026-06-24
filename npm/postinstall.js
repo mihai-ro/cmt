@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const https = require("node:https");
 
-const ALLOWED_HOSTS = new Set(["github.com", "objects.githubusercontent.com"]);
+const ALLOWED_HOSTS = new Set(["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"]);
 
 function target() {
   const { platform, arch } = process;

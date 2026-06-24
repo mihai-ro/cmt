@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.2...@mihairo/cmt-v2.0.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* allow release-assets.githubusercontent.com in postinstall allowlist ([#30](https://github.com/mihai-ro/cmt/issues/30)) ([d966ded](https://github.com/mihai-ro/cmt/commit/d966ded2a982db88c69d9951e6e4aa19833fc97e))
+
 ## [2.0.2](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.1...@mihairo/cmt-v2.0.2) (2026-06-24)
 
 

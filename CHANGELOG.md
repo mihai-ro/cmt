@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.3...@mihairo/cmt-v2.0.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* wire up HomebrewFormula with correct URLs and auto-update on release ([#32](https://github.com/mihai-ro/cmt/issues/32)) ([cb8c535](https://github.com/mihai-ro/cmt/commit/cb8c5355edf904facd1850d8d2f7ccc571897cb4))
+
 ## [2.0.3](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.2...@mihairo/cmt-v2.0.3) (2026-06-24)
 
 

@@ -1,6 +1,10 @@
 use crate::types::Config;
 use crate::{config, git, picker, ui};
-use std::io::{self, Write};
+use crossterm::{
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    terminal,
+};
+use std::io::{self, BufRead, Write};
 
 pub struct Draft {
     pub type_: String,
@@ -47,7 +51,120 @@ fn prompt_line(p: &ui::Palette, label: &str, hint: &str) -> String {
 }
 
 fn read_line() -> String {
+    if terminal::enable_raw_mode().is_err() {
+        return read_line_cooked();
+    }
+    let mut out = io::stderr();
+    let mut chars: Vec<char> = Vec::new();
+    let mut pos: usize = 0;
+
+    loop {
+        let ev = match event::read() {
+            Ok(e) => e,
+            Err(_) => break,
+        };
+        let Event::Key(KeyEvent {
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            ..
+        }) = ev
+        else {
+            continue;
+        };
+        if modifiers.contains(KeyModifiers::CONTROL) && code == KeyCode::Char('c') {
+            let _ = write!(out, "\r\n");
+            let _ = out.flush();
+            let _ = terminal::disable_raw_mode();
+            std::process::exit(1);
+        }
+        match code {
+            KeyCode::Enter => break,
+            KeyCode::Char(c) => {
+                chars.insert(pos, c);
+                pos += 1;
+                if pos == chars.len() {
+                    let _ = write!(out, "{c}");
+                } else {
+                    let tail: String = chars[pos..].iter().collect();
+                    let n = tail.chars().count();
+                    let _ = write!(out, "{c}{tail}\x1b[K\x1b[{n}D");
+                }
+                let _ = out.flush();
+            }
+            KeyCode::Backspace => {
+                if pos > 0 {
+                    chars.remove(pos - 1);
+                    pos -= 1;
+                    let tail: String = chars[pos..].iter().collect();
+                    let n = tail.chars().count();
+                    let _ = write!(out, "\x1b[1D{tail}\x1b[K");
+                    if n > 0 {
+                        let _ = write!(out, "\x1b[{n}D");
+                    }
+                    let _ = out.flush();
+                }
+            }
+            KeyCode::Delete => {
+                if pos < chars.len() {
+                    chars.remove(pos);
+                    let tail: String = chars[pos..].iter().collect();
+                    let n = tail.chars().count();
+                    let _ = write!(out, "{tail}\x1b[K");
+                    if n > 0 {
+                        let _ = write!(out, "\x1b[{n}D");
+                    }
+                    let _ = out.flush();
+                }
+            }
+            KeyCode::Left => {
+                if pos > 0 {
+                    pos -= 1;
+                    let _ = write!(out, "\x1b[1D");
+                    let _ = out.flush();
+                }
+            }
+            KeyCode::Right => {
+                if pos < chars.len() {
+                    pos += 1;
+                    let _ = write!(out, "\x1b[1C");
+                    let _ = out.flush();
+                }
+            }
+            KeyCode::Home => {
+                if pos > 0 {
+                    let _ = write!(out, "\x1b[{pos}D");
+                    let _ = out.flush();
+                    pos = 0;
+                }
+            }
+            KeyCode::End => {
+                if pos < chars.len() {
+                    let n = chars.len() - pos;
+                    let _ = write!(out, "\x1b[{n}C");
+                    let _ = out.flush();
+                    pos = chars.len();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let _ = write!(out, "\r\n");
+    let _ = out.flush();
+    let _ = terminal::disable_raw_mode();
+    chars.into_iter().collect()
+}
+
+fn read_line_cooked() -> String {
     let mut s = String::new();
+    #[cfg(unix)]
+    {
+        if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
+            let _ = io::BufReader::new(tty).read_line(&mut s);
+            return s.trim_end_matches(['\n', '\r']).to_string();
+        }
+    }
     let _ = io::stdin().read_line(&mut s);
     s.trim_end_matches(['\n', '\r']).to_string()
 }
@@ -172,23 +289,33 @@ fn input_body(p: &ui::Palette) -> String {
 
 fn input_breaking(p: &ui::Palette) -> (bool, String) {
     let mut e = io::stderr();
-    let _ = write!(
-        e,
-        "\n  {}breaking change?{}  {}[y/N]{}  {}›{} ",
-        p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
-    );
-    let _ = e.flush();
-    let ans = read_line();
-    if ans.eq_ignore_ascii_case("y") {
+    loop {
         let _ = write!(
             e,
-            "  {}breaking change{}  {}›{} ",
-            p.red, p.reset, p.accent, p.reset
+            "\n  {}breaking change?{}  {}[y/N]{}  {}›{} ",
+            p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
         );
         let _ = e.flush();
-        (true, read_line())
-    } else {
-        (false, String::new())
+        match read_line().to_lowercase().as_str() {
+            "y" | "yes" => {
+                let _ = write!(
+                    e,
+                    "  {}breaking change{}  {}›{} ",
+                    p.red, p.reset, p.accent, p.reset
+                );
+                let _ = e.flush();
+                return (true, read_line());
+            }
+            "n" | "no" | "" => return (false, String::new()),
+            _ => {
+                let _ = writeln!(
+                    e,
+                    "  {}⚑{}  {}Enter y or n{}",
+                    p.yellow, p.reset, p.yellow, p.reset
+                );
+                let _ = e.flush();
+            }
+        }
     }
 }
 
@@ -282,43 +409,41 @@ pub fn run(write_only: bool, dry_run: bool) {
 fn confirm_and_commit(msg: &str, p: &ui::Palette) {
     let mut e = io::stderr();
     eprint!("{}", ui::commit_box(msg, p, term_cols()));
-    let _ = write!(
-        e,
-        "\n  {}commit?{}  {}[Y/n/e]{}  {}›{} ",
-        p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
-    );
-    let _ = e.flush();
-    let ans = read_line();
-    match ans.as_str() {
-        "" | "y" | "Y" | "yes" | "Yes" | "YES" => {
-            if git::commit(msg, false)
-                .map(|s| s.success())
-                .unwrap_or(false)
-            {
-                eprintln!("\n  {}✔{} {}committed{}", p.green, p.reset, p.bold, p.reset);
-            } else {
-                eprintln!("\n  {}✖{}  commit failed", p.red, p.reset);
-                std::process::exit(1);
+    loop {
+        let _ = write!(
+            e,
+            "\n  {}commit?{}  {}[Y/n]{}  {}›{} ",
+            p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
+        );
+        let _ = e.flush();
+        match read_line().to_lowercase().as_str() {
+            "" | "y" | "yes" => {
+                if git::commit(msg, false)
+                    .map(|s| s.success())
+                    .unwrap_or(false)
+                {
+                    eprintln!("\n  {}✔{} {}committed{}", p.green, p.reset, p.bold, p.reset);
+                } else {
+                    eprintln!("\n  {}✖{}  commit failed", p.red, p.reset);
+                    std::process::exit(1);
+                }
+                return;
             }
-        }
-        "e" | "E" | "edit" | "Edit" | "EDIT" => {
-            let edited = edit_in_editor(msg);
-            if git::commit(&edited, false)
-                .map(|s| s.success())
-                .unwrap_or(false)
-            {
-                eprintln!("\n  {}✔{} {}committed{}", p.green, p.reset, p.bold, p.reset);
-            } else {
-                eprintln!("\n  {}✖{}  commit failed", p.red, p.reset);
-                std::process::exit(1);
+            "n" | "no" => {
+                eprintln!(
+                    "  {}⚑{}  {}Commit aborted.{}",
+                    p.yellow, p.reset, p.yellow, p.reset
+                );
+                std::process::exit(0);
             }
-        }
-        _ => {
-            eprintln!(
-                "  {}⚑{}  {}Commit aborted.{}",
-                p.yellow, p.reset, p.yellow, p.reset
-            );
-            std::process::exit(0);
+            _ => {
+                let _ = writeln!(
+                    e,
+                    "  {}⚑{}  {}Enter y or n{}",
+                    p.yellow, p.reset, p.yellow, p.reset
+                );
+                let _ = e.flush();
+            }
         }
     }
 }

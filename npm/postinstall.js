@@ -121,6 +121,13 @@ async function main() {
     process.exit(1);
   }
 
+  // macOS Gatekeeper quarantines binaries downloaded over the network.
+  // Strip the quarantine xattr so the binary runs without a security prompt.
+  if (process.platform === "darwin") {
+    const { spawnSync } = require("child_process");
+    spawnSync("xattr", ["-d", "com.apple.quarantine", dest], { stdio: "ignore" });
+  }
+
   console.error(`cmt: installed ${dest}`);
 }
 

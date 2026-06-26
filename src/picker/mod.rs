@@ -45,11 +45,13 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
     }
     let p = palette();
     let mut s = state::new(items.to_vec());
-    let mut out = std::io::stderr();
+    let mut out = std::io::BufWriter::new(std::io::stderr());
     let _ = execute!(out, cursor::Hide);
     // header
     let _ = write!(out, "\n  {}{}{}\r\n\n", p.accent_bold, prompt, p.reset);
-    let mut lines_drawn = draw(&mut out, &s, &p);
+    // save position before the list so we can restore+clear on each redraw
+    let _ = queue!(out, cursor::SavePosition);
+    draw(&mut out, &s, &p);
 
     loop {
         match event::read() {
@@ -78,9 +80,9 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
                     KeyCode::Char(c) => s.push_filter(c),
                     _ => {}
                 }
-                // move cursor back up over previously drawn lines, redraw
-                let _ = queue!(out, cursor::MoveUp(lines_drawn as u16));
-                lines_drawn = draw(&mut out, &s, &p);
+                // restore to saved position, wipe old list, draw fresh
+                let _ = queue!(out, cursor::RestorePosition, Clear(ClearType::FromCursorDown));
+                draw(&mut out, &s, &p);
             }
             Ok(_) => {}
             Err(_) => break,
@@ -89,11 +91,7 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
 
     let chosen = s.selected_original();
     // collapse to the single selected line
-    let _ = queue!(
-        out,
-        cursor::MoveUp(lines_drawn as u16),
-        Clear(ClearType::FromCursorDown)
-    );
+    let _ = queue!(out, cursor::RestorePosition, Clear(ClearType::FromCursorDown));
     if let Some(orig) = chosen {
         let _ = write!(
             out,

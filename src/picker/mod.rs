@@ -49,9 +49,10 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
     let _ = execute!(out, cursor::Hide);
     // header
     let _ = write!(out, "\n  {}{}{}\r\n\n", p.accent_bold, prompt, p.reset);
-    // save position before the list so we can restore+clear on each redraw
-    let _ = queue!(out, cursor::SavePosition);
-    draw(&mut out, &s, &p);
+    // track the line count of the last draw so each redraw can move the cursor
+    // back to the top of the list (MoveUp) and clear downward — relative cursor
+    // movement is honored everywhere, unlike Save/RestorePosition.
+    let mut last_n = draw(&mut out, &s, &p);
 
     loop {
         match event::read() {
@@ -80,9 +81,12 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
                     KeyCode::Char(c) => s.push_filter(c),
                     _ => {}
                 }
-                // restore to saved position, wipe old list, draw fresh
-                let _ = queue!(out, cursor::RestorePosition, Clear(ClearType::FromCursorDown));
-                draw(&mut out, &s, &p);
+                // move back to the top of the list, wipe old list, draw fresh
+                if last_n > 0 {
+                    let _ = queue!(out, cursor::MoveUp(last_n as u16));
+                }
+                let _ = queue!(out, Clear(ClearType::FromCursorDown));
+                last_n = draw(&mut out, &s, &p);
             }
             Ok(_) => {}
             Err(_) => break,
@@ -91,7 +95,10 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
 
     let chosen = s.selected_original();
     // collapse to the single selected line
-    let _ = queue!(out, cursor::RestorePosition, Clear(ClearType::FromCursorDown));
+    if last_n > 0 {
+        let _ = queue!(out, cursor::MoveUp(last_n as u16));
+    }
+    let _ = queue!(out, Clear(ClearType::FromCursorDown));
     if let Some(orig) = chosen {
         let _ = write!(
             out,

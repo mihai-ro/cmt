@@ -25,7 +25,7 @@ jobs:
           - { os: windows-latest, target: aarch64-pc-windows-msvc,   ext: ".exe" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ env.RELEASE_TAG }}
       - uses: dtolnay/rust-toolchain@stable
@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/cmt${{ matrix.ext }}" "dist/cmt-${{ matrix.target }}${{ matrix.ext }}"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: dist/cmt-${{ matrix.target }}${{ matrix.ext }}
@@ -90,7 +90,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v6

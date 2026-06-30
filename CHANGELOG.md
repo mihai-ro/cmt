@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.5](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.4...@mihairo/cmt-v2.0.5) (2026-06-30)
+
+
+### Bug Fixes
+
+* picker navigation, hook stdin, line editor, quarantine ([#34](https://github.com/mihai-ro/cmt/issues/34)) ([0557beb](https://github.com/mihai-ro/cmt/commit/0557beb88e77d04a9802d1396262e083229b84ea))
+
 ## [2.0.4](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.3...@mihairo/cmt-v2.0.4) (2026-06-24)
 
 

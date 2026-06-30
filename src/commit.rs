@@ -4,7 +4,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal,
 };
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 
 pub struct Draft {
     pub type_: String,
@@ -154,6 +154,7 @@ fn read_line_cooked() -> String {
     let mut s = String::new();
     #[cfg(unix)]
     {
+        use std::io::BufRead;
         if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
             let _ = io::BufReader::new(tty).read_line(&mut s);
             return s.trim_end_matches(['\n', '\r']).to_string();

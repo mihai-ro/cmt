@@ -58,11 +58,7 @@ fn read_line() -> String {
     let mut chars: Vec<char> = Vec::new();
     let mut pos: usize = 0;
 
-    loop {
-        let ev = match event::read() {
-            Ok(e) => e,
-            Err(_) => break,
-        };
+    while let Ok(ev) = event::read() {
         let Event::Key(KeyEvent {
             code,
             modifiers,
@@ -138,13 +134,11 @@ fn read_line() -> String {
                     pos = 0;
                 }
             }
-            KeyCode::End => {
-                if pos < chars.len() {
-                    let n = chars.len() - pos;
-                    let _ = write!(out, "\x1b[{n}C");
-                    let _ = out.flush();
-                    pos = chars.len();
-                }
+            KeyCode::End if pos < chars.len() => {
+                let n = chars.len() - pos;
+                let _ = write!(out, "\x1b[{n}C");
+                let _ = out.flush();
+                pos = chars.len();
             }
             _ => {}
         }

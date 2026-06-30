@@ -30,6 +30,26 @@ irm https://raw.githubusercontent.com/mihai-ro/cmt/main/install.ps1 | iex
 npm install -g @mihairo/cmt
 ```
 
+**pnpm**
+
+pnpm blocks package install scripts by default, and `cmt` downloads its
+binary in a `postinstall` step. After installing, approve the build:
+
+```bash
+pnpm add -g @mihairo/cmt
+pnpm approve-builds -g        # select @mihairo/cmt, then confirm
+```
+
+For a project dependency, allowlist it in `package.json` instead:
+
+```json
+{
+  "pnpm": {
+    "onlyBuiltDependencies": ["@mihairo/cmt"]
+  }
+}
+```
+
 **Homebrew**
 
 ```bash

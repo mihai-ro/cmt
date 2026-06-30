@@ -48,7 +48,7 @@ pub fn palette() -> Palette {
     if std::env::var_os("NO_COLOR").is_some() {
         return Palette::plain();
     }
-    if std::io::stdout().is_terminal() {
+    if std::io::stderr().is_terminal() {
         Palette::colored()
     } else {
         Palette::plain()

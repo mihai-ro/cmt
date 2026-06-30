@@ -45,11 +45,14 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
     }
     let p = palette();
     let mut s = state::new(items.to_vec());
-    let mut out = std::io::stderr();
+    let mut out = std::io::BufWriter::new(std::io::stderr());
     let _ = execute!(out, cursor::Hide);
     // header
     let _ = write!(out, "\n  {}{}{}\r\n\n", p.accent_bold, prompt, p.reset);
-    let mut lines_drawn = draw(&mut out, &s, &p);
+    // track the line count of the last draw so each redraw can move the cursor
+    // back to the top of the list (MoveUp) and clear downward — relative cursor
+    // movement is honored everywhere, unlike Save/RestorePosition.
+    let mut last_n = draw(&mut out, &s, &p);
 
     loop {
         match event::read() {
@@ -78,9 +81,12 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
                     KeyCode::Char(c) => s.push_filter(c),
                     _ => {}
                 }
-                // move cursor back up over previously drawn lines, redraw
-                let _ = queue!(out, cursor::MoveUp(lines_drawn as u16));
-                lines_drawn = draw(&mut out, &s, &p);
+                // move back to the top of the list, wipe old list, draw fresh
+                if last_n > 0 {
+                    let _ = queue!(out, cursor::MoveUp(last_n as u16));
+                }
+                let _ = queue!(out, Clear(ClearType::FromCursorDown));
+                last_n = draw(&mut out, &s, &p);
             }
             Ok(_) => {}
             Err(_) => break,
@@ -89,11 +95,10 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
 
     let chosen = s.selected_original();
     // collapse to the single selected line
-    let _ = queue!(
-        out,
-        cursor::MoveUp(lines_drawn as u16),
-        Clear(ClearType::FromCursorDown)
-    );
+    if last_n > 0 {
+        let _ = queue!(out, cursor::MoveUp(last_n as u16));
+    }
+    let _ = queue!(out, Clear(ClearType::FromCursorDown));
     if let Some(orig) = chosen {
         let _ = write!(
             out,

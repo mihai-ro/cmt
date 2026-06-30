@@ -23,6 +23,8 @@ mkdir -p "$BIN_DIR"
 echo "Downloading cmt ($target)..."
 curl -fsSL "$url" -o "$BIN_DIR/cmt"
 chmod +x "$BIN_DIR/cmt"
+# macOS Gatekeeper quarantines binaries downloaded over the network
+[ "$os" = "Darwin" ] && xattr -d com.apple.quarantine "$BIN_DIR/cmt" 2>/dev/null || true
 echo "Installed to $BIN_DIR/cmt"
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;

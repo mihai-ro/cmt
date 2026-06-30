@@ -1,2 +1,6 @@
 .superpowers/
 /target
+
+# downloaded at install time by npm/postinstall.js — never committed
+npm/bin/cmt
+npm/bin/cmt.exe

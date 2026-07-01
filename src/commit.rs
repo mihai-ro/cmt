@@ -87,7 +87,7 @@ fn read_line(p: &ui::Palette) -> String {
 /// Reads one line of input, returning None when the source is closed (EOF).
 fn read_line_raw() -> Option<String> {
     if terminal::enable_raw_mode().is_err() {
-        return read_line_cooked();
+        return ui::read_tty_line();
     }
     let mut out = io::stderr();
     let mut chars: Vec<char> = Vec::new();
@@ -98,7 +98,7 @@ fn read_line_raw() -> Option<String> {
             Ok(ev) => ev,
             Err(_) => {
                 let _ = terminal::disable_raw_mode();
-                return None;
+                return ui::read_tty_line();
             }
         };
         let Event::Key(KeyEvent {
@@ -192,25 +192,6 @@ fn read_line_raw() -> Option<String> {
     Some(chars.into_iter().collect())
 }
 
-/// Line-buffered fallback used when raw mode is unavailable. Returns None on
-/// EOF so callers can distinguish a closed stream from an empty line.
-fn read_line_cooked() -> Option<String> {
-    let mut s = String::new();
-    #[cfg(unix)]
-    {
-        use std::io::BufRead;
-        if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
-            return match io::BufReader::new(tty).read_line(&mut s) {
-                Ok(0) | Err(_) => None,
-                Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
-            };
-        }
-    }
-    match io::stdin().read_line(&mut s) {
-        Ok(0) | Err(_) => None,
-        Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
-    }
-}
 
 fn type_label(t: &crate::types::CommitType, p: &ui::Palette) -> String {
     let badge = match t.semver.as_str() {

@@ -11,18 +11,16 @@ use state::PickerState;
 use std::io::Write;
 
 fn fallback(prompt: &str, items: &[String]) -> Option<usize> {
-    use std::io::{stdin, stdout};
     let p = palette();
-    println!("\n{}{}{}", p.bold, prompt, p.reset);
+    let mut stderr = std::io::stderr();
+    let _ = writeln!(stderr, "\n{}{}{}", p.bold, prompt, p.reset);
     for (i, item) in items.iter().enumerate() {
-        println!("  {:>2}) {}", i + 1, item);
+        let _ = writeln!(stderr, "  {:>2}) {}", i + 1, item);
     }
-    print!("\nChoice (1-{}): ", items.len());
-    let _ = stdout().flush();
-    let mut line = String::new();
-    if stdin().read_line(&mut line).is_err() {
-        return Some(0);
-    }
+    let _ = write!(stderr, "\nChoice (1-{}): ", items.len());
+    let _ = stderr.flush();
+
+    let line = crate::ui::read_tty_line().unwrap_or_default();
     match line.trim().parse::<usize>() {
         Ok(n) if n >= 1 && n <= items.len() => Some(n - 1),
         _ => Some(0),
@@ -89,7 +87,16 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
                 last_n = draw(&mut out, &s, &p);
             }
             Ok(_) => {}
-            Err(_) => break,
+            Err(_) => {
+                // event source failed (e.g. mio couldn't register the tty fd);
+                // clean up the picker UI and fall back to line-buffered input
+                if last_n > 0 {
+                    let _ = queue!(out, cursor::MoveUp(last_n as u16));
+                }
+                let _ = execute!(out, Clear(ClearType::FromCursorDown), cursor::Show);
+                let _ = terminal::disable_raw_mode();
+                return fallback(prompt, items);
+            }
         }
     }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.6](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.5...@mihairo/cmt-v2.0.6) (2026-07-01)
+
+
+### Bug Fixes
+
+* **commit:** abort cleanly when no interactive terminal available ([#37](https://github.com/mihai-ro/cmt/issues/37)) ([e191c9b](https://github.com/mihai-ro/cmt/commit/e191c9bf7eb28c327cb03af9c16b922613885d05))
+
 ## [2.0.5](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.4...@mihairo/cmt-v2.0.5) (2026-06-30)
 
 

@@ -55,6 +55,25 @@ pub fn palette() -> Palette {
     }
 }
 
+/// Read one line from /dev/tty, falling back to stdin. None on EOF.
+pub fn read_tty_line() -> Option<String> {
+    use std::io::BufRead;
+    let mut s = String::new();
+    #[cfg(unix)]
+    {
+        if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
+            return match std::io::BufReader::new(tty).read_line(&mut s) {
+                Ok(0) | Err(_) => None,
+                Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
+            };
+        }
+    }
+    match std::io::stdin().read_line(&mut s) {
+        Ok(0) | Err(_) => None,
+        Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
+    }
+}
+
 pub fn wordwrap(text: &str, width: usize) -> Vec<String> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {

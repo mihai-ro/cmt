@@ -57,10 +57,10 @@ pub fn palette() -> Palette {
 
 /// Read one line from /dev/tty, falling back to stdin. None on EOF.
 pub fn read_tty_line() -> Option<String> {
-    use std::io::BufRead;
     let mut s = String::new();
     #[cfg(unix)]
     {
+        use std::io::BufRead;
         if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
             return match std::io::BufReader::new(tty).read_line(&mut s) {
                 Ok(0) | Err(_) => None,

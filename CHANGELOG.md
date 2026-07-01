@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.8](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.7...@mihairo/cmt-v2.0.8) (2026-07-01)
+
+
+### Bug Fixes
+
+* restore arrow-key picker in git hook environments ([#43](https://github.com/mihai-ro/cmt/issues/43)) ([0c72aaf](https://github.com/mihai-ro/cmt/commit/0c72aafbcf434654ad40371d512ab252f4b20fc1))
+
 ## [2.0.7](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.6...@mihairo/cmt-v2.0.7) (2026-07-01)
 
 

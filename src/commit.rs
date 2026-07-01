@@ -4,7 +4,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal,
 };
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 pub struct Draft {
     pub type_: String,
@@ -47,10 +47,45 @@ fn prompt_line(p: &ui::Palette, label: &str, hint: &str) -> String {
         p.accent_bold, label, p.reset, p.muted, hint, p.reset, p.accent, p.reset
     );
     let _ = e.flush();
-    read_line()
+    read_line(p)
 }
 
-fn read_line() -> String {
+/// True when we can read interactive input. crossterm reads keystrokes from
+/// stdin when it's a tty, otherwise from /dev/tty — mirror that so we bail
+/// before rendering pickers when neither is available (e.g. a git hook with
+/// no controlling terminal).
+fn interactive_input() -> bool {
+    if io::stdin().is_terminal() {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        std::fs::File::open("/dev/tty").is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
+}
+
+/// Called when the input source is closed (EOF) or unavailable. Exits cleanly
+/// instead of letting prompt loops spin forever on empty reads.
+fn abort_no_input(p: &ui::Palette) -> ! {
+    let _ = terminal::disable_raw_mode();
+    eprintln!(
+        "\n  {}✖{}  cmt needs an interactive terminal for input.\n       Use `git commit -m \"...\"` for a non-interactive commit.",
+        p.red, p.reset
+    );
+    std::process::exit(1);
+}
+
+/// Reads one line, aborting cleanly if the input source is closed.
+fn read_line(p: &ui::Palette) -> String {
+    read_line_raw().unwrap_or_else(|| abort_no_input(p))
+}
+
+/// Reads one line of input, returning None when the source is closed (EOF).
+fn read_line_raw() -> Option<String> {
     if terminal::enable_raw_mode().is_err() {
         return read_line_cooked();
     }
@@ -58,7 +93,14 @@ fn read_line() -> String {
     let mut chars: Vec<char> = Vec::new();
     let mut pos: usize = 0;
 
-    while let Ok(ev) = event::read() {
+    loop {
+        let ev = match event::read() {
+            Ok(ev) => ev,
+            Err(_) => {
+                let _ = terminal::disable_raw_mode();
+                return None;
+            }
+        };
         let Event::Key(KeyEvent {
             code,
             modifiers,
@@ -147,21 +189,27 @@ fn read_line() -> String {
     let _ = write!(out, "\r\n");
     let _ = out.flush();
     let _ = terminal::disable_raw_mode();
-    chars.into_iter().collect()
+    Some(chars.into_iter().collect())
 }
 
-fn read_line_cooked() -> String {
+/// Line-buffered fallback used when raw mode is unavailable. Returns None on
+/// EOF so callers can distinguish a closed stream from an empty line.
+fn read_line_cooked() -> Option<String> {
     let mut s = String::new();
     #[cfg(unix)]
     {
         use std::io::BufRead;
         if let Ok(tty) = std::fs::OpenOptions::new().read(true).open("/dev/tty") {
-            let _ = io::BufReader::new(tty).read_line(&mut s);
-            return s.trim_end_matches(['\n', '\r']).to_string();
+            return match io::BufReader::new(tty).read_line(&mut s) {
+                Ok(0) | Err(_) => None,
+                Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
+            };
         }
     }
-    let _ = io::stdin().read_line(&mut s);
-    s.trim_end_matches(['\n', '\r']).to_string()
+    match io::stdin().read_line(&mut s) {
+        Ok(0) | Err(_) => None,
+        Ok(_) => Some(s.trim_end_matches(['\n', '\r']).to_string()),
+    }
 }
 
 fn type_label(t: &crate::types::CommitType, p: &ui::Palette) -> String {
@@ -226,7 +274,7 @@ fn input_description(cfg: &Config, p: &ui::Palette) -> String {
     loop {
         let _ = write!(e, "  {}›{} ", p.accent, p.reset);
         let _ = e.flush();
-        let desc = read_line();
+        let desc = read_line(p);
         if desc.is_empty() {
             let _ = writeln!(
                 e,
@@ -251,7 +299,7 @@ fn input_description(cfg: &Config, p: &ui::Palette) -> String {
                 p.yellow, p.reset, p.muted, p.reset, p.accent, p.reset
             );
             let _ = e.flush();
-            let c = read_line();
+            let c = read_line(p);
             if c.eq_ignore_ascii_case("y") {
                 return desc;
             }
@@ -273,7 +321,7 @@ fn input_body(p: &ui::Palette) -> String {
     loop {
         let _ = write!(e, "  {}›{} ", p.accent, p.reset);
         let _ = e.flush();
-        let l = read_line();
+        let l = read_line(p);
         if l.is_empty() {
             break;
         }
@@ -291,7 +339,7 @@ fn input_breaking(p: &ui::Palette) -> (bool, String) {
             p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
         );
         let _ = e.flush();
-        match read_line().to_lowercase().as_str() {
+        match read_line(p).to_lowercase().as_str() {
             "y" | "yes" => {
                 let _ = write!(
                     e,
@@ -299,7 +347,7 @@ fn input_breaking(p: &ui::Palette) -> (bool, String) {
                     p.red, p.reset, p.accent, p.reset
                 );
                 let _ = e.flush();
-                return (true, read_line());
+                return (true, read_line(p));
             }
             "n" | "no" | "" => return (false, String::new()),
             _ => {
@@ -323,7 +371,7 @@ fn input_footer(p: &ui::Palette) -> String {
     );
     let _ = write!(e, "  {}›{} ", p.accent, p.reset);
     let _ = e.flush();
-    read_line()
+    read_line(p)
 }
 
 fn term_cols() -> usize {
@@ -333,6 +381,9 @@ fn term_cols() -> usize {
 }
 
 pub fn build_draft(cfg: &Config, p: &ui::Palette) -> Draft {
+    if !interactive_input() {
+        abort_no_input(p);
+    }
     let type_ = select_type(cfg, p);
     let scope = select_scope(cfg, p);
     let desc = input_description(cfg, p);
@@ -411,7 +462,7 @@ fn confirm_and_commit(msg: &str, p: &ui::Palette) {
             p.accent_bold, p.reset, p.muted, p.reset, p.accent, p.reset
         );
         let _ = e.flush();
-        match read_line().to_lowercase().as_str() {
+        match read_line(p).to_lowercase().as_str() {
             "" | "y" | "yes" => {
                 if git::commit(msg, false)
                     .map(|s| s.success())

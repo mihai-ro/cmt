@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.7](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.6...@mihairo/cmt-v2.0.7) (2026-07-01)
+
+
+### Bug Fixes
+
+* fall back to cooked tty input when mio event source fails in hook ([#40](https://github.com/mihai-ro/cmt/issues/40)) ([b156404](https://github.com/mihai-ro/cmt/commit/b156404d8c2fdb8150178c1ac15296bb3b85dac8))
+
 ## [2.0.6](https://github.com/mihai-ro/cmt/compare/@mihairo/cmt-v2.0.5...@mihairo/cmt-v2.0.6) (2026-07-01)
 
 

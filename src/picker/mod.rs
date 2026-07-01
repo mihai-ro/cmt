@@ -13,17 +13,27 @@ use std::io::Write;
 fn fallback(prompt: &str, items: &[String]) -> Option<usize> {
     let p = palette();
     let mut stderr = std::io::stderr();
-    let _ = writeln!(stderr, "\n{}{}{}", p.bold, prompt, p.reset);
+    let _ = writeln!(stderr, "\n  {}{}{}", p.accent_bold, prompt, p.reset);
     for (i, item) in items.iter().enumerate() {
         let _ = writeln!(stderr, "  {:>2}) {}", i + 1, item);
     }
-    let _ = write!(stderr, "\nChoice (1-{}): ", items.len());
-    let _ = stderr.flush();
-
-    let line = crate::ui::read_tty_line().unwrap_or_default();
-    match line.trim().parse::<usize>() {
-        Ok(n) if n >= 1 && n <= items.len() => Some(n - 1),
-        _ => Some(0),
+    loop {
+        let _ = write!(stderr, "\n  Choice (1-{}): ", items.len());
+        let _ = stderr.flush();
+        let line = crate::ui::read_tty_line().unwrap_or_default();
+        if line.contains('\x1b') {
+            let _ = writeln!(stderr, "  (type a number and press Enter)");
+            continue;
+        }
+        if line.trim().is_empty() {
+            return Some(0);
+        }
+        match line.trim().parse::<usize>() {
+            Ok(n) if n >= 1 && n <= items.len() => return Some(n - 1),
+            _ => {
+                let _ = writeln!(stderr, "  invalid — enter 1-{}", items.len());
+            }
+        }
     }
 }
 
@@ -89,9 +99,11 @@ pub fn select(prompt: &str, items: &[String]) -> Option<usize> {
             Ok(_) => {}
             Err(_) => {
                 // event source failed (e.g. mio couldn't register the tty fd);
-                // clean up the picker UI and fall back to line-buffered input
-                if last_n > 0 {
-                    let _ = queue!(out, cursor::MoveUp(last_n as u16));
+                // erase header (blank + prompt + blank = 3 lines) + drawn items,
+                // then fall back to line-buffered numbered selection
+                let total = last_n + 3;
+                if total > 0 {
+                    let _ = queue!(out, cursor::MoveUp(total as u16));
                 }
                 let _ = execute!(out, Clear(ClearType::FromCursorDown), cursor::Show);
                 let _ = terminal::disable_raw_mode();

@@ -1,28 +1,28 @@
 class Cmt < Formula
   desc "Conventional Commits CLI — a single native binary"
   homepage "https://github.com/mihai-ro/cmt"
-  version "2.0.3"
+  version "2.0.5"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v#{version}/cmt-aarch64-apple-darwin"
-      sha256 "cfcfd20f8b5de87fe8cae47d2987a7b6bc8a534ae805fbca20975c1bc1e22f45"
+      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v2.0.5/cmt-aarch64-apple-darwin"
+      sha256 "7b219da98414cdb76a38d7c4f89b672ffbfd3cc4d31556eaf278f859793916f2"
     end
     on_intel do
-      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v#{version}/cmt-x86_64-apple-darwin"
-      sha256 "e48e186395955ce1509c85b01981d6e722d435cd4f0199d8e90d668eb757eb7c"
+      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v2.0.5/cmt-x86_64-apple-darwin"
+      sha256 "b4bae7d98685a7a10373d034f28e7ea2feef41a493820b710a3b427a3359d2f4"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v#{version}/cmt-aarch64-unknown-linux-gnu"
-      sha256 "20973e5792a86f00599ed52e5408ca1e7f2d645e9d6be979981152bcf61a8f4f"
+      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v2.0.5/cmt-aarch64-unknown-linux-gnu"
+      sha256 "42ffd72e7a556d0326dc5e788683e3c7cce0caaaf3152b5f5292daae226613ef"
     end
     on_intel do
-      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v#{version}/cmt-x86_64-unknown-linux-gnu"
-      sha256 "6f8b999dd09818e5095602a57aeedc5cf7b0a0b136b54ae8aa82f29979f1d41a"
+      url "https://github.com/mihai-ro/cmt/releases/download/%40mihairo/cmt-v2.0.5/cmt-x86_64-unknown-linux-gnu"
+      sha256 "2fa89b6353a0bd13852444b9835d9c859b1d922ebaa605b92c42daed3209d99d"
     end
   end
 

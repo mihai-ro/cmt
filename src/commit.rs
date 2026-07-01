@@ -192,7 +192,6 @@ fn read_line_raw() -> Option<String> {
     Some(chars.into_iter().collect())
 }
 
-
 fn type_label(t: &crate::types::CommitType, p: &ui::Palette) -> String {
     let badge = match t.semver.as_str() {
         "minor" => format!(
